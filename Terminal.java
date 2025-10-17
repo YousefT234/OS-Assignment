@@ -2,7 +2,7 @@
 Notes
     You can use built-in functions and predefined classes in Java. Do not use "exec" to implement any of these commands
     Make a function for each command and call it in the switch case
-    The redirection operators (>, >>) is handled already in the parser class. You just need to call handleOutput function if your command returns an output
+    The redirection operators (>, >>) are handled already in the parser class. You just need to call handleOutput function if your command returns an output
     Wrong commands case is handled, You need to handle wrong arguments cases based on the behavior of the command
 */
 
