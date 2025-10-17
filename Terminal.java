@@ -119,7 +119,78 @@ public void cd(String[] args) {
         System.out.println("cd command takes at most one argument.");
     }
 }
-
+//Command: mkdir -> takes one or more arg(a dir name or a full\relative path)
+public void mkdir(String[] args) {
+    if (args.length == 0) {
+        System.out.println("argument needed");
+        return;
+    }
+    File currentDir = new File(System.getProperty("user.dir"));
+    for (String arg:args){
+        if(arg.trim().isEmpty()){
+            continue;
+        }
+        File targetDir = new File(arg);
+        if(!targetDir.isAbsolute()){
+            targetDir=new File(currentDir,arg);
+        }
+       if(targetDir.exists()){
+        System.out.println("error: file exists");
+        continue;
+       }
+       if(targetDir.mkdirs()){
+        System.out.println("Dir'"+arg+"'created");
+       }else{
+        System.out.println("failed");
+       }
+    }
+}
+//commad: rmdir ..> takes * or full/relative path andd removes only if empty
+public void rmdir(String[] args){
+    if(args.length !=1){
+        System.out.println("invalid number of arguments");
+        return;
+    }
+    String arg= args[0].trim();
+    if(arg.isEmpty()){
+        System.out.println("missing operand");
+        return;
+    }File currentDir=new File(System.getProperty("user.dir"));
+    //case one: *
+    if(arg.equals("*")){
+        File[] files=currentDir.listFiles();
+        if(files==null){
+            System.out.println("cannot access current dir");
+            return;
+        }
+        for(File file:files){
+            if(file.isDirectory() && file.listFiles().length==0){
+                if(file.delete()){
+                    System.out.println("success");
+                }else{
+                    System.out.println("error");
+                }
+            }
+        }
+        return;
+    }
+    //case 2
+    File targetDir=new File(arg);
+    if (!targetDir.isAbsolute()){
+        targetDir=new File(currentDir,arg);
+    }if(!targetDir.exists()){
+        System.out.println("no such file or dir");
+    }if(!targetDir.isDirectory()){
+        System.out.println("not a directory");
+    }if(targetDir.listFiles().length>0){
+        System.out.println("directory not empty");
+    }
+    if(targetDir.delete()){
+        System.out.println("success");
+    }else{
+        System.out.println("failed");
+    }
+}
 
     public void chooseCommandAction(){
         String command = parser.getCommandName();
@@ -135,13 +206,13 @@ public void cd(String[] args) {
              cd(args);
                 break;
             case "mkdir":
-            //put ur function here
+                mkdir(args);
                 break;
             case "rm":
             //put ur function here
                 break;
             case "rmdir":
-            //put ur function here
+                rmdir(args);
                 break;
             case "touch":
             //put ur function here
