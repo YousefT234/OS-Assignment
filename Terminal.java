@@ -70,19 +70,69 @@ public class Terminal {
                 }
             }
     }
+    // Command: pwd 
+public String pwd() {
+    return System.getProperty("user.dir");
+}
+// Command: ls
+public String ls() {
+    File currentDir = new File(System.getProperty("user.dir"));
+    File[] files = currentDir.listFiles();
+    if (files == null || files.length == 0) return "Directory is empty.";
+
+    Arrays.sort(files, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
+    StringBuilder sb = new StringBuilder();
+    for (File f : files) {
+        sb.append(f.getName()).append("\n");
+    }
+    return sb.toString().trim();
+}
+// Command: cd → Change directory (3 cases)
+public void cd(String[] args) {
+    File currentDir = new File(System.getProperty("user.dir"));
+
+    if (args.length == 0) {
+        // No args → Go to home directory
+        System.setProperty("user.dir", System.getProperty("user.home"));
+    } else if (args.length == 1) {
+        String path = args[0];
+        if (path.equals("..")) {
+            // Go one level up
+            File parent = currentDir.getParentFile();
+            if (parent != null) {
+                System.setProperty("user.dir", parent.getAbsolutePath());
+            }
+        } else {
+            // Handle relative or absolute path
+            File newDir = new File(path);
+            if (!newDir.isAbsolute()) {
+                newDir = new File(currentDir, path);
+            }
+
+            if (newDir.exists() && newDir.isDirectory()) {
+                System.setProperty("user.dir", newDir.getAbsolutePath());
+            } else {
+                System.out.println("Invalid path or directory does not exist.");
+            }
+        }
+    } else {
+        System.out.println("cd command takes at most one argument.");
+    }
+}
+
 
     public void chooseCommandAction(){
         String command = parser.getCommandName();
         String[] args = parser.getArgs();
         switch (command) {
             case "pwd":
-            //put ur function here
+            handleOutput(pwd());
                 break;
             case "ls":
-            //put ur function here
+            handleOutput(ls());
                 break;
             case "cd":
-            //put ur function here
+             cd(args);
                 break;
             case "mkdir":
             //put ur function here
