@@ -82,7 +82,10 @@ public class Terminal {
         if (path == null) {
             System.out.println(text);
         } else {
-                path=pwd()+File.separator+path;
+                File f = new File(path);
+                if (!f.isAbsolute()) {
+                    path=pwd()+File.separator+path;
+                }
                 try (FileWriter writer = new java.io.FileWriter(path, parser.AppendMode())) { 
                     writer.write(text + System.lineSeparator());
                 } catch (IOException e) {
@@ -198,12 +201,18 @@ public void rmdir(String[] args){
     File targetDir=new File(arg);
     if (!targetDir.isAbsolute()){
         targetDir=new File(currentDir,arg);
-    }if(!targetDir.exists()){
+    }
+    if(!targetDir.exists()){
         System.out.println("no such file or dir");
-    }if(!targetDir.isDirectory()){
+        return;
+    }
+    if(!targetDir.isDirectory()){
         System.out.println("not a directory");
-    }if(targetDir.listFiles().length>0){
+        return;
+    }
+    if(targetDir.listFiles().length>0){
         System.out.println("directory not empty");
+        return;
     }
     if(targetDir.delete()){
         System.out.println("success");
@@ -231,7 +240,7 @@ public void rmdir(String[] args){
             handleOutput(ls());
                 break;
             case "cd":
-             cd(args);
+                cd(args);
                 break;
             case "mkdir":
                 mkdir(args);
