@@ -23,22 +23,41 @@ class Parser {
         if (input.contains(">>")) {
             String[] temp = input.split(">>", 2);
             input = temp[0].trim();
-            outputFile = temp[1].trim();
+            outputFile = temp[1].trim().replaceAll("^\"|\"$", ""); 
             appendMode = true;
         } else if (input.contains(">")) {
             String[] temp = input.split(">", 2);
             input = temp[0].trim();
-            outputFile = temp[1].trim();
+            outputFile = temp[1].trim().replaceAll("^\"|\"$", ""); 
             appendMode = false;
         } else outputFile = null;
         
 
-        String[] temp = input.split("\\s+");
-        if (temp.length == 0) return false;
-        commandName = temp[0];
-        args = new String[temp.length - 1];
-        System.arraycopy(temp, 1, args, 0, args.length);
-        return true;
+    List<String> parts = new ArrayList<>();
+    String cur = "";
+    boolean inQuotes = false;
+
+    for (int i = 0; i < input.length(); i++) {
+        char c = input.charAt(i);
+
+        if (c == '"') {
+            inQuotes = !inQuotes;   
+        } else if (Character.isWhitespace(c) && !inQuotes) {
+            if (cur.length() > 0) {
+                parts.add(cur.toString());
+                cur="";
+            }
+        } else {
+            cur+=c;
+        }
+    }
+    if (cur.length() > 0) parts.add(cur);
+
+    if (parts.isEmpty()) return false;
+
+    commandName = parts.get(0);
+    args = parts.size() > 1 ? parts.subList(1, parts.size()).toArray(new String[0]) : new String[0];
+    return true;
     }
 
     public String getCommandName(){
@@ -59,11 +78,12 @@ public class Terminal {
     Parser parser= new Parser();
 
     private void handleOutput(String text) {
-        String file = parser.getOutputFile();
-        if (file == null) {
+        String path = parser.getOutputFile();
+        if (path == null) {
             System.out.println(text);
         } else {
-                try (FileWriter writer = new java.io.FileWriter(file, parser.AppendMode())) { 
+                path=pwd()+File.separator+path;
+                try (FileWriter writer = new java.io.FileWriter(path, parser.AppendMode())) { 
                     writer.write(text + System.lineSeparator());
                 } catch (IOException e) {
                     System.err.println("Error writing to file: " + e.getMessage());
@@ -197,9 +217,17 @@ public void rmdir(String[] args){
         String[] args = parser.getArgs();
         switch (command) {
             case "pwd":
+                if(args.length!=0){
+                    System.out.println("This command takes no arguments");
+                    break;
+                }
             handleOutput(pwd());
                 break;
             case "ls":
+                if(args.length!=0){
+                    System.out.println("This command takes no arguments");
+                    break;
+                }
             handleOutput(ls());
                 break;
             case "cd":
@@ -241,10 +269,12 @@ public void rmdir(String[] args){
 
     public static void main(String[] args){
         System.out.println("Welcome to the terminal");
+        System.out.println("Make sure to enclose arguents with spaces in double quotes.");
         Terminal terminal = new Terminal();
         String input;
         Scanner scanner = new Scanner(System.in);
         while (true) {
+            System.out.print(terminal.pwd());
             System.out.print("> ");
             input = scanner.nextLine();
             if (input.equals("exit")) {
