@@ -7,8 +7,12 @@ Notes
 */
 
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.io.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 class Parser {
     String commandName;
@@ -177,7 +181,7 @@ public class Terminal {
         }
     }
 
-    //command: rmdir ..> takes * or full/relative path and removes only if empty
+    //command: rmdir -> takes * or full/relative path and removes only if empty
     public void rmdir(String[] args) {
         if (args.length != 1) {
             System.out.println("invalid number of arguments");
@@ -231,6 +235,7 @@ public class Terminal {
         }
     }
 
+    // command: wc -> takes a file and counts the number of lines, words, and characters.
     public String wc(String[] args) {
         if (args.length != 1) {
             System.out.println("invalid number of arguments");
@@ -238,10 +243,9 @@ public class Terminal {
         }
         String arg = args[0].trim();
 
-        File currentDir = new File(System.getProperty("user.dir"));
         File targetDir = new File(arg);
         if (!targetDir.isAbsolute()) {
-            targetDir = new File(currentDir, arg);
+            targetDir = new File(pwd(), arg);
         }
 
         if (!targetDir.exists() || !targetDir.isFile()) {
@@ -257,8 +261,7 @@ public class Terminal {
             while ((curLine = reader.readLine()) != null) {
                 lines++;
                 chars += curLine.length();
-                if (!curLine.isEmpty())
-                    words += curLine.trim().split("\\s+").length;
+                if (!curLine.isEmpty()) words += curLine.trim().split("\\s+").length;
             }
             reader.close();
         } catch (IOException e) {
@@ -266,6 +269,74 @@ public class Terminal {
         }
 
         return lines + " " + words + " " + chars + " " + arg;
+    }
+
+    public void zip(String[] args) {
+        if (args.length == 0) {
+            System.out.println("invalid number of arguments");
+            return;
+        }
+
+        int i = 0;
+        boolean subDirectories = false;
+
+        if (Objects.equals(args[0], "-r")) {
+            subDirectories = true;
+            i = 1;
+        }
+
+        File zipFile = new File(args[i]);
+        if (!zipFile.isAbsolute()) zipFile = new File(pwd(), args[i]);
+        try {
+            byte[] buffer = new byte[1024];
+            FileOutputStream fos = new FileOutputStream(zipFile.toString());
+            ZipOutputStream zos = new ZipOutputStream(fos);
+            for (i++; i < args.length; i++) {
+                File fileToZip = new File(args[i]);
+                if (!fileToZip.isAbsolute()) fileToZip = new File(pwd(), args[i]);
+
+                if (!subDirectories) {
+                    if (!fileToZip.isFile()) continue;
+                    FileInputStream fis = new FileInputStream(fileToZip.toString());
+                    zos.putNextEntry(new ZipEntry(fileToZip.getName()));
+                    int length;
+                    while ((length = fis.read(buffer)) > 0)
+                        zos.write(buffer, 0, length);
+
+                    zos.closeEntry();
+                    fis.close();
+                } else {
+
+                    Path sourcePath = fileToZip.toPath();
+                    Files.walk(sourcePath).filter(path -> !Files.isDirectory(path)).forEach(path -> {
+                        String zipEntryName = sourcePath.getParent().relativize(path).toString().replace("\\", "/");
+                        try {
+                            FileInputStream fis = new FileInputStream(path.toString());
+                            ZipEntry zipEntry = new ZipEntry(zipEntryName);
+                            zos.putNextEntry(zipEntry);
+
+                            int length;
+                            while ((length = fis.read(buffer)) > 0)
+                                zos.write(buffer, 0, length);
+
+                            zos.closeEntry();
+                            fis.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    });
+
+                }
+            }
+            zos.close();
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void unzip(String[] args) {
+
     }
 
     public void chooseCommandAction() {
@@ -311,7 +382,7 @@ public class Terminal {
                 handleOutput(wc(args));
                 break;
             case "zip":
-                //put ur function here
+                zip(args);
                 break;
             case "unzip":
                 //put ur function here
