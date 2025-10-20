@@ -439,7 +439,7 @@ public class Terminal {
         }
     }
 
-    // Command: cat
+    // Command: Cat
     public String cat(String[] args) {
         if (args.length == 0 || args.length > 2) {
             return "Error: cat requires one or two file name arguments.";
