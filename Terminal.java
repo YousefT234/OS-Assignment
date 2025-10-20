@@ -398,16 +398,15 @@ public class Terminal {
         }
 
         File file = new File(args[0]);
-        // Explicitly resolve relative path
         if (!file.isAbsolute()) {
             file = new File(pwd(), args[0]);
         }
 
         try {
             if (file.createNewFile()) {
-                // Success - file created
+                // file created
             } else {
-                // File exists, update timestamp (standard touch behavior)
+                // File exists
                 file.setLastModified(System.currentTimeMillis());
             }
         } catch (IOException e) {
@@ -423,7 +422,6 @@ public class Terminal {
         }
 
         File file = new File(args[0]);
-        // Explicitly resolve relative path
         if (!file.isAbsolute()) {
             file = new File(pwd(), args[0]);
         }
@@ -433,7 +431,6 @@ public class Terminal {
         } else if (file.isDirectory()) {
             System.out.println("Error: Cannot remove a directory with 'rm'. Use 'rmdir' or 'cp -r'.");
         } else if (file.delete()) {
-            // Success
         } else {
             System.out.println("Error: Could not delete file: " + args[0]);
         }
