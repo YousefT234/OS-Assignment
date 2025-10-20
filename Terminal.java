@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.io.*;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 class Parser {
@@ -238,7 +239,7 @@ public class Terminal {
     // command: wc -> takes a file and counts the number of lines, words, and characters.
     public String wc(String[] args) {
         if (args.length != 1) {
-            System.out.println("invalid number of arguments");
+            System.err.println("Invalid number of arguments.");
             return "";
         }
         String arg = args[0].trim();
@@ -249,7 +250,7 @@ public class Terminal {
         }
 
         if (!targetDir.exists() || !targetDir.isFile()) {
-            System.out.println("No such file.");
+            System.err.println("No such file.");
             return "";
         }
 
@@ -273,7 +274,7 @@ public class Terminal {
 
     public void zip(String[] args) {
         if (args.length == 0) {
-            System.out.println("invalid number of arguments");
+            System.err.println("Invalid number of arguments.");
             return;
         }
 
@@ -336,7 +337,53 @@ public class Terminal {
     }
 
     public void unzip(String[] args) {
+        if (args.length != 1 && args.length != 3) {
+            System.err.println("Invalid number of arguments.");
+            return;
+        }
+        if (args.length == 3 && !Objects.equals(args[1], "-d")) {
+            System.err.println("Invalid arguments.");
+            return;
+        }
+        File fileToUnzip = new File(args[0]);
+        if (!fileToUnzip.isAbsolute())
+            fileToUnzip = new File(pwd(), args[0]);
+        File destination = new File(pwd());
+        if (args.length == 3) {
+            destination = new File(args[2]);
+            if (!destination.isAbsolute())
+                destination = new File(pwd(), args[2]);
+            if (!destination.exists())
+                destination.mkdirs();
 
+        }
+
+        try {
+            FileInputStream fis = new FileInputStream(fileToUnzip.toString());
+            ZipInputStream zis = new ZipInputStream(fis);
+            ZipEntry entry = zis.getNextEntry();
+            while (entry != null) {
+                File newFile = new File(destination, entry.getName());
+                if (entry.isDirectory())
+                    newFile.mkdirs();
+                else if (newFile.getParentFile() != null && !newFile.getParentFile().exists())
+                    newFile.getParentFile().mkdirs();
+                else {
+                    FileOutputStream fos = new FileOutputStream(newFile);
+                    byte[] buffer = new byte[1024];
+                    int length;
+                    while ((length = zis.read(buffer)) > 0) {
+                        fos.write(buffer, 0, length);
+                    }
+                }
+                zis.closeEntry();
+                entry = zis.getNextEntry();
+            }
+        } catch (FileNotFoundException ex) {
+            throw new RuntimeException(ex);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void chooseCommandAction() {
@@ -385,7 +432,7 @@ public class Terminal {
                 zip(args);
                 break;
             case "unzip":
-                //put ur function here
+                unzip(args);
                 break;
             default:
                 System.out.println("Unknown command");
