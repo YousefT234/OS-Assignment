@@ -27,38 +27,57 @@ class Parser {
         input = input.trim();
         if (input.isEmpty()) return false;
 
+        // Handle redirection tokens (simple: only if not inside quotes would be ideal)
         if (input.contains(">>")) {
             String[] temp = input.split(">>", 2);
             input = temp[0].trim();
-            outputFile = temp[1].trim().replaceAll("^\"|\"$", "");
+            outputFile = temp[1].trim().replaceAll("^\"|\"$", ""); 
             appendMode = true;
         } else if (input.contains(">")) {
             String[] temp = input.split(">", 2);
             input = temp[0].trim();
-            outputFile = temp[1].trim().replaceAll("^\"|\"$", "");
+            outputFile = temp[1].trim().replaceAll("^\"|\"$", ""); 
             appendMode = false;
         } else outputFile = null;
 
-
         List<String> parts = new ArrayList<>();
-        String cur = "";
+        StringBuilder cur = new StringBuilder();
         boolean inQuotes = false;
 
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
 
+            if (c == '\\' && i + 1 < input.length()) {
+                char next = input.charAt(i + 1);
+                if (next == '"' || next == '\\') {
+                    cur.append(next);
+                    i++; // skip next
+                    continue;
+                }
+                cur.append(c);
+                continue;
+            }
+
             if (c == '"') {
                 inQuotes = !inQuotes;
+                // don't include the quote character in the token
             } else if (Character.isWhitespace(c) && !inQuotes) {
                 if (cur.length() > 0) {
                     parts.add(cur.toString());
-                    cur = "";
+                    cur.setLength(0);
                 }
             } else {
-                cur += c;
+                cur.append(c);
             }
         }
-        if (cur.length() > 0) parts.add(cur);
+
+        // If still inside quotes, report error (unbalanced quote) and refuse to parse
+        if (inQuotes) {
+            System.err.println("Parse error: missing closing double quote (\") in input");
+            return false;
+        }
+
+        if (cur.length() > 0) parts.add(cur.toString());
 
         if (parts.isEmpty()) return false;
 
@@ -107,7 +126,12 @@ public class Terminal {
 
     // Command: pwd
     public String pwd() {
-        return System.getProperty("user.dir");
+        try {
+            return new File(System.getProperty("user.dir")).getCanonicalPath();
+        } catch (IOException e) {
+            // Fall back to the raw property if canonicalization fails
+            return System.getProperty("user.dir");
+        }
     }
 
     // Command: ls
@@ -130,14 +154,23 @@ public class Terminal {
 
         if (args.length == 0) {
             // No args → Go to home directory
-            System.setProperty("user.dir", System.getProperty("user.home"));
+            try {
+                String home = new File(System.getProperty("user.home")).getCanonicalPath();
+                System.setProperty("user.dir", home);
+            } catch (IOException e) {
+                System.setProperty("user.dir", System.getProperty("user.home"));
+            }
         } else if (args.length == 1) {
             String path = args[0];
             if (path.equals("..")) {
                 // Go one level up
                 File parent = currentDir.getParentFile();
                 if (parent != null) {
-                    System.setProperty("user.dir", parent.getAbsolutePath());
+                    try {
+                        System.setProperty("user.dir", parent.getCanonicalPath());
+                    } catch (IOException e) {
+                        System.setProperty("user.dir", parent.getAbsolutePath());
+                    }
                 }
             } else {
                 // Handle relative or absolute path
@@ -147,7 +180,11 @@ public class Terminal {
                 }
 
                 if (newDir.exists() && newDir.isDirectory()) {
-                    System.setProperty("user.dir", newDir.getAbsolutePath());
+                    try {
+                        System.setProperty("user.dir", newDir.getCanonicalPath());
+                    } catch (IOException e) {
+                        System.setProperty("user.dir", newDir.getAbsolutePath());
+                    }
                 } else {
                     System.out.println("Invalid path or directory does not exist.");
                 }
@@ -292,47 +329,58 @@ public class Terminal {
         if (!zipFile.isAbsolute()) zipFile = new File(pwd(), args[i]);
         try {
             byte[] buffer = new byte[1024];
-            FileOutputStream fos = new FileOutputStream(zipFile.toString());
-            ZipOutputStream zos = new ZipOutputStream(fos);
-            for (i++; i < args.length; i++) {
-                File fileToZip = new File(args[i]);
-                if (!fileToZip.isAbsolute()) fileToZip = new File(pwd(), args[i]);
+            try (FileOutputStream fos = new FileOutputStream(zipFile.toString());
+                 ZipOutputStream zos = new ZipOutputStream(fos)) {
+                for (i++; i < args.length; i++) {
+                    File fileToZip = new File(args[i]);
+                    if (!fileToZip.isAbsolute()) fileToZip = new File(pwd(), args[i]);
 
-                if (!subDirectories) {
-                    if (!fileToZip.isFile()) continue;
-                    FileInputStream fis = new FileInputStream(fileToZip.toString());
-                    zos.putNextEntry(new ZipEntry(fileToZip.getName()));
-                    int length;
-                    while ((length = fis.read(buffer)) > 0)
-                        zos.write(buffer, 0, length);
+                    if (!subDirectories) {
+                        if (!fileToZip.isFile()) continue;
+                        FileInputStream fis = new FileInputStream(fileToZip.toString());
+                        zos.putNextEntry(new ZipEntry(fileToZip.getName()));
+                        int length;
+                        while ((length = fis.read(buffer)) > 0)
+                            zos.write(buffer, 0, length);
 
-                    zos.closeEntry();
-                    fis.close();
-                } else {
+                        zos.closeEntry();
+                        fis.close();
+                    } else {
 
-                    Path sourcePath = fileToZip.toPath();
-                    Files.walk(sourcePath).filter(path -> !Files.isDirectory(path)).forEach(path -> {
-                        String zipEntryName = sourcePath.getParent().relativize(path).toString().replace("\\", "/");
-                        try {
-                            FileInputStream fis = new FileInputStream(path.toString());
-                            ZipEntry zipEntry = new ZipEntry(zipEntryName);
-                            zos.putNextEntry(zipEntry);
+                        Path sourcePath = fileToZip.toPath();
+                        Path zipPath = zipFile.toPath().toAbsolutePath().normalize();
+                        Files.walk(sourcePath).forEach(path -> {
+                            try {
+                                Path absPath = path.toAbsolutePath().normalize();
+                                // Skip adding the zip file into itself if it's inside the source tree
+                                if (absPath.equals(zipPath)) return;
 
-                            int length;
-                            while ((length = fis.read(buffer)) > 0)
-                                zos.write(buffer, 0, length);
+                                String zipEntryName = sourcePath.getParent().relativize(path).toString().replace("\\", "/");
+                                if (Files.isDirectory(path)) {
+                                    // ensure directory entries end with /
+                                    if (!zipEntryName.endsWith("/")) zipEntryName = zipEntryName + "/";
+                                    ZipEntry dirEntry = new ZipEntry(zipEntryName);
+                                    zos.putNextEntry(dirEntry);
+                                    zos.closeEntry();
+                                } else {
+                                    try (FileInputStream fis = new FileInputStream(path.toString())) {
+                                        ZipEntry zipEntry = new ZipEntry(zipEntryName);
+                                        zos.putNextEntry(zipEntry);
+                                        int length;
+                                        while ((length = fis.read(buffer)) > 0) {
+                                            zos.write(buffer, 0, length);
+                                        }
+                                        zos.closeEntry();
+                                    }
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        });
 
-                            zos.closeEntry();
-                            fis.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    });
-
+                    }
                 }
             }
-            zos.close();
-            fos.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -363,23 +411,28 @@ public class Terminal {
         try {
             FileInputStream fis = new FileInputStream(fileToUnzip.toString());
             ZipInputStream zis = new ZipInputStream(fis);
-            ZipEntry entry = zis.getNextEntry();
-            while (entry != null) {
-                File newFile = new File(destination, entry.getName());
-                if (entry.isDirectory())
-                    newFile.mkdirs();
-                else if (newFile.getParentFile() != null && !newFile.getParentFile().exists())
-                    newFile.getParentFile().mkdirs();
-                else {
-                    FileOutputStream fos = new FileOutputStream(newFile);
-                    byte[] buffer = new byte[1024];
-                    int length;
-                    while ((length = zis.read(buffer)) > 0) {
-                        fos.write(buffer, 0, length);
+            try {
+                ZipEntry entry = zis.getNextEntry();
+                while (entry != null) {
+                    File newFile = new File(destination, entry.getName());
+                    if (entry.isDirectory())
+                        newFile.mkdirs();
+                    else if (newFile.getParentFile() != null && !newFile.getParentFile().exists())
+                        newFile.getParentFile().mkdirs();
+                    else {
+                        FileOutputStream fos = new FileOutputStream(newFile);
+                        byte[] buffer = new byte[1024];
+                        int length;
+                        while ((length = zis.read(buffer)) > 0) {
+                            fos.write(buffer, 0, length);
+                        }
+                        fos.close();
                     }
+                    zis.closeEntry();
+                    entry = zis.getNextEntry();
                 }
-                zis.closeEntry();
-                entry = zis.getNextEntry();
+            } finally {
+                zis.close();
             }
         } catch (FileNotFoundException ex) {
             throw new RuntimeException(ex);
