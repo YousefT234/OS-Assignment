@@ -19,10 +19,10 @@ class semaphore {
     protected semaphore(int initial) { value = initial ; }
 
     public synchronized void P() {
-	  
+
         value-- ;
         if (value < 0)
-        try { wait() ; } catch(  InterruptedException e ) { }
+            try { wait() ; } catch(  InterruptedException e ) { }
     }
 
     public synchronized void V() {
@@ -30,44 +30,84 @@ class semaphore {
     }
 }
 
+
 class Car extends Thread {
+
+    String carNumber;
+    ServiceStation serviceStation;
+
+    public Car(String carNumber, ServiceStation serviceStation) {
+        this.carNumber = carNumber;
+        this.serviceStation = serviceStation;
+    }
+
+    //helper functions for run method
+    public synchronized void printCarStatus(String message) {
+        System.out.println(message);
+    }
+
+    private void produce(String carNumber) {
+        serviceStation.empty.P();
+        serviceStation.mutex.P();
+        serviceStation.queue.offer(carNumber);
+        printCarStatus(carNumber + " Enters the queue, Queue size: " + serviceStation.queue.size());
+
+        serviceStation.mutex.V();
+        serviceStation.full.V();
+    }
+
+    @Override
+    public void run() {
+
+        try {
+            printCarStatus(carNumber + " Arrived");
+
+            produce(carNumber);
+
+            Thread.sleep((long) (Math.random() * 500));
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+    }
 }
 
 class Pump extends Thread {
-   private int pumpId;
-   private ServiceStation station;
+    private int pumpId;
+    private ServiceStation station;
 
-   public Pump(int var1, ServiceStation var2) {
-      this.pumpId = var1;
-      this.station = var2;
-   }
+    public Pump(int var1, ServiceStation var2) {
+        this.pumpId = var1;
+        this.station = var2;
+    }
 
-   public void run() {
-      while(true) {
-         try {
-            this.station.full.P();
-            this.station.mutex.P();
-            String var1 = (String)this.station.queue.poll();
-            if (var1 != null) {
-               System.out.println("Pump " + this.pumpId + ": took " + var1);
-               this.station.mutex.V();
-               this.station.empty.V();
-               this.station.bays.P();
-               System.out.println("Pump " + this.pumpId + ": " + var1 + " starts service");
-               Thread.sleep((long)((int)(Math.random() * 3000.0) + 1000));
-               System.out.println("Pump " + this.pumpId + ": " + var1 + " finishes service");
-               this.station.bays.V();
-               continue;
+    public void run() {
+        while(true) {
+            try {
+                this.station.full.P();
+                this.station.mutex.P();
+                String var1 = (String)this.station.queue.poll();
+                if (var1 != null) {
+                    System.out.println("Pump " + this.pumpId + ": took " + var1);
+                    this.station.mutex.V();
+                    this.station.empty.V();
+                    this.station.bays.P();
+                    System.out.println("Pump " + this.pumpId + ": " + var1 + " starts service");
+                    Thread.sleep((long)((int)(Math.random() * 3000.0) + 1000));
+                    System.out.println("Pump " + this.pumpId + ": " + var1 + " finishes service");
+                    this.station.bays.V();
+                    continue;
+                }
+
+                this.station.mutex.V();
+            } catch (InterruptedException var2) {
+                System.out.println("Pump " + this.pumpId + " interrupted.");
             }
 
-            this.station.mutex.V();
-         } catch (InterruptedException var2) {
-            System.out.println("Pump " + this.pumpId + " interrupted.");
-         }
-
-         return;
-      }
-   }
+            return;
+        }
+    }
 }
 
 public class ServiceStation {
@@ -117,6 +157,7 @@ public class ServiceStation {
             t.join();
         }
     }
+
 
     public static void main(String[] args) throws InterruptedException {
         System.out.println("Simulation started.");
