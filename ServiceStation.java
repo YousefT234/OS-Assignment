@@ -34,6 +34,40 @@ class Car extends Thread {
 }
 
 class Pump extends Thread {
+   private int pumpId;
+   private ServiceStation station;
+
+   public Pump(int var1, ServiceStation var2) {
+      this.pumpId = var1;
+      this.station = var2;
+   }
+
+   public void run() {
+      while(true) {
+         try {
+            this.station.full.P();
+            this.station.mutex.P();
+            String var1 = (String)this.station.queue.poll();
+            if (var1 != null) {
+               System.out.println("Pump " + this.pumpId + ": took " + var1);
+               this.station.mutex.V();
+               this.station.empty.V();
+               this.station.bays.P();
+               System.out.println("Pump " + this.pumpId + ": " + var1 + " starts service");
+               Thread.sleep((long)((int)(Math.random() * 3000.0) + 1000));
+               System.out.println("Pump " + this.pumpId + ": " + var1 + " finishes service");
+               this.station.bays.V();
+               continue;
+            }
+
+            this.station.mutex.V();
+         } catch (InterruptedException var2) {
+            System.out.println("Pump " + this.pumpId + " interrupted.");
+         }
+
+         return;
+      }
+   }
 }
 
 public class ServiceStation {
