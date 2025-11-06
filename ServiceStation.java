@@ -46,8 +46,7 @@ class Car extends Thread {
         print(carNumber + " Arrived");
 
         synchronized (serviceStation.mutex) {
-            boolean mustWait = serviceStation.queue.size() >= serviceStation.bufferSize ||
-                               serviceStation.bays.getValue() <= 0;
+            boolean mustWait = serviceStation.queue.size() >= serviceStation.bufferSize || serviceStation.bays.getValue() <= 0;
             if (mustWait) {
                 print(carNumber + " arrived and waiting");
             }
@@ -57,7 +56,6 @@ class Car extends Thread {
             serviceStation.empty.P();
             serviceStation.mutex.P();
             serviceStation.queue.offer(carNumber);
-            print(carNumber + " Enters the queue, Queue size: " + serviceStation.queue.size());
             serviceStation.mutex.V();
             serviceStation.full.V();
         } catch (InterruptedException e) {
@@ -83,15 +81,16 @@ class Pump extends Thread {
                 station.mutex.P();
                 String car = station.queue.poll();
                 if (car != null) {
+                    Thread.sleep(200 + (long)(Math.random() * 300));
                     System.out.println("Pump " + pumpId + ": took " + car);
                     station.mutex.V();
                     station.empty.V();
-
                     station.bays.P();
+                    Thread.sleep(200 + (long)(Math.random() * 300));
                     System.out.println("Pump " + pumpId + ": " + car + " starts service");
                     Thread.sleep(200 + (long)(Math.random() * 300));
                     System.out.println("Pump " + pumpId + ": " + car + " finishes service");
-                    System.out.println("Pump " + pumpId + " is now free");
+                    System.out.println("Pump " + pumpId + " Bay " + pumpId + " is now free");
                     station.bays.V();
 
                     station.processed.incrementAndGet();
@@ -144,7 +143,7 @@ public class ServiceStation {
             Car c = new Car("C" + i, this);
             carThreads.add(c);
             c.start();
-            Thread.sleep(80); 
+            Thread.sleep(200 + (long)(Math.random() * 300)); 
         }
 
         for (Car c : carThreads) c.join();
