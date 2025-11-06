@@ -1,4 +1,4 @@
-//*GL guys
+//GL guys
 /*output should show when a car:
 
 • Arrives
@@ -9,30 +9,26 @@
  */
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 class semaphore {
+    protected int value;
+    protected semaphore(int initial) { value = initial; }
 
-    protected int value = 0 ;
-
-    protected semaphore() { value = 0 ; }
-
-    protected semaphore(int initial) { value = initial ; }
-
-    public synchronized void P() {
-
-        value-- ;
-        if (value < 0)
-            try { wait() ; } catch(  InterruptedException e ) { }
+    public synchronized void P() throws InterruptedException {
+        value--;
+        if (value < 0) wait();
     }
 
     public synchronized void V() {
-        value++ ; if (value <= 0) notify() ;
+        value++;
+        if (value <= 0) notify();
     }
+
+    public synchronized int getValue() { return value; }
 }
 
-
 class Car extends Thread {
-
     String carNumber;
     ServiceStation serviceStation;
 
@@ -41,35 +37,32 @@ class Car extends Thread {
         this.serviceStation = serviceStation;
     }
 
-    //helper functions for run method
-    public synchronized void printCarStatus(String message) {
-        System.out.println(message);
-    }
-
-    private void produce(String carNumber) {
-        serviceStation.empty.P();
-        serviceStation.mutex.P();
-        serviceStation.queue.offer(carNumber);
-        printCarStatus(carNumber + " Enters the queue, Queue size: " + serviceStation.queue.size());
-
-        serviceStation.mutex.V();
-        serviceStation.full.V();
+    private void print(String msg) {
+        System.out.println(msg);
     }
 
     @Override
     public void run() {
+        print(carNumber + " Arrived");
+
+        synchronized (serviceStation.mutex) {
+            boolean mustWait = serviceStation.queue.size() >= serviceStation.bufferSize ||
+                               serviceStation.bays.getValue() <= 0;
+            if (mustWait) {
+                print(carNumber + " arrived and waiting");
+            }
+        }
 
         try {
-            printCarStatus(carNumber + " Arrived");
-
-            produce(carNumber);
-
-            Thread.sleep((long) (Math.random() * 500));
-
+            serviceStation.empty.P();
+            serviceStation.mutex.P();
+            serviceStation.queue.offer(carNumber);
+            print(carNumber + " Enters the queue, Queue size: " + serviceStation.queue.size());
+            serviceStation.mutex.V();
+            serviceStation.full.V();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-
     }
 }
 
@@ -77,42 +70,43 @@ class Pump extends Thread {
     private int pumpId;
     private ServiceStation station;
 
-    public Pump(int var1, ServiceStation var2) {
-        this.pumpId = var1;
-        this.station = var2;
+    public Pump(int pumpId, ServiceStation station) {
+        this.pumpId = pumpId;
+        this.station = station;
     }
 
+    @Override
     public void run() {
-        while(true) {
+        while (!isInterrupted()) {
             try {
-                this.station.full.P();
-                this.station.mutex.P();
-                String var1 = (String)this.station.queue.poll();
-                if (var1 != null) {
-                    System.out.println("Pump " + this.pumpId + ": took " + var1);
-                    this.station.mutex.V();
-                    this.station.empty.V();
-                    this.station.bays.P();
-                    System.out.println("Pump " + this.pumpId + ": " + var1 + " starts service");
-                    Thread.sleep((long)((int)(Math.random() * 3000.0) + 1000));
-                    System.out.println("Pump " + this.pumpId + ": " + var1 + " finishes service");
-                    this.station.bays.V();
-                    continue;
+                station.full.P();
+                station.mutex.P();
+                String car = station.queue.poll();
+                if (car != null) {
+                    System.out.println("Pump " + pumpId + ": took " + car);
+                    station.mutex.V();
+                    station.empty.V();
+
+                    station.bays.P();
+                    System.out.println("Pump " + pumpId + ": " + car + " starts service");
+                    Thread.sleep(200 + (long)(Math.random() * 300));
+                    System.out.println("Pump " + pumpId + ": " + car + " finishes service");
+                    System.out.println("Pump " + pumpId + " is now free");
+                    station.bays.V();
+
+                    station.processed.incrementAndGet();
+                } else {
+                    station.mutex.V();
                 }
-
-                this.station.mutex.V();
-            } catch (InterruptedException var2) {
-                System.out.println("Pump " + this.pumpId + " interrupted.");
+            } catch (InterruptedException e) {
+                break;
             }
-
-            return;
         }
     }
 }
 
 public class ServiceStation {
-    //initializes the shared resources
-    private int bufferSize;
+    protected int bufferSize;
     private int numPumps;
     private int numCars;
     protected Queue<String> queue;
@@ -122,61 +116,59 @@ public class ServiceStation {
     protected semaphore bays;
     private List<Pump> pumpThreads;
     private List<Car> carThreads;
+    protected AtomicInteger processed;
 
     public ServiceStation(int bufferSize, int numPumps, int numCars) {
-        this.bufferSize = bufferSize;
-        this.numPumps = numPumps;
+        this.bufferSize = Math.max(1, Math.min(10, bufferSize));
+        this.numPumps = Math.max(1, numPumps);
         this.numCars = numCars;
+
         this.queue = new LinkedList<>();
         this.mutex = new semaphore(1);
-        this.empty = new semaphore(bufferSize);
+        this.empty = new semaphore(this.bufferSize);
         this.full = new semaphore(0);
-        this.bays = new semaphore(numPumps);
+        this.bays = new semaphore(this.numPumps);
         this.pumpThreads = new ArrayList<>();
         this.carThreads = new ArrayList<>();
+        this.processed = new AtomicInteger(0);
     }
 
     public void startSimulation() throws InterruptedException {
-        for (int i = 0; i < numPumps; i++) {
-            Pump pump = new Pump(i, this);
-            pumpThreads.add(pump);
-            pump.start();
+        for (int i = 1; i <= numPumps; i++) {
+            Pump p = new Pump(i, this);
+            pumpThreads.add(p);
+            p.start();
         }
-        for (int i = 0; i < numCars; i++) {
-            Car car = new Car("C" + i, this);
-            carThreads.add(car);
-            car.start();
+
+        for (int i = 1; i <= numCars; i++) {
+            Car c = new Car("C" + i, this);
+            carThreads.add(c);
+            c.start();
+            Thread.sleep(80); 
         }
-        for (Thread t : carThreads) {
-            t.join();
+
+        for (Car c : carThreads) c.join();
+
+        while (processed.get() < numCars) {
+            Thread.sleep(100);
         }
-        for (int i = 0; i < numPumps; i++) {
-            full.V();
-        }
-        for (Thread t : pumpThreads) {
-            t.join();
-        }
-    }
 
-
-    public static void main(String[] args) throws InterruptedException {
-        System.out.println("Simulation started.");
-        Scanner scanner = new Scanner(System.in);
-
-        System.out.print("Enter buffer size (queue capacity): ");
-        int bufferSize = scanner.nextInt();
-
-        System.out.print("Enter number of pumps: ");
-        int numPumps = scanner.nextInt();
-
-        System.out.print("Enter number of cars: ");
-        int numCars = scanner.nextInt();
-
-        scanner.close();
-        ServiceStation station = new ServiceStation(bufferSize, numPumps, numCars);
-        station.startSimulation();
+        for (Pump p : pumpThreads) p.interrupt();
+        for (Pump p : pumpThreads) p.join();
 
         System.out.println("Simulation ended.");
     }
 
+    public static void main(String[] args) throws InterruptedException {
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Enter buffer size (1-10): ");
+        int buffer = sc.nextInt();
+        System.out.print("Enter number of pumps: ");
+        int pumps = sc.nextInt();
+        System.out.print("Enter number of cars: ");
+        int cars = sc.nextInt();
+        sc.close();
+
+        new ServiceStation(buffer, pumps, cars).startSimulation();
+    }
 }
