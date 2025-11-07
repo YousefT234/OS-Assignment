@@ -143,7 +143,7 @@ public class ServiceStation {
             Car c = new Car("C" + i, this);
             carThreads.add(c);
             c.start();
-            Thread.sleep(200 + (long)(Math.random() * 300)); 
+            Thread.sleep(200 + (long)(Math.random() * 300));
         }
 
         for (Car c : carThreads) c.join();
@@ -160,14 +160,27 @@ public class ServiceStation {
 
     public static void main(String[] args) throws InterruptedException {
         Scanner sc = new Scanner(System.in);
-        System.out.print("Enter buffer size (1-10): ");
-        int buffer = sc.nextInt();
-        System.out.print("Enter number of pumps: ");
-        int pumps = sc.nextInt();
-        System.out.print("Enter number of cars: ");
-        int cars = sc.nextInt();
-        sc.close();
+        boolean isNotValidInput = true;
+        while(isNotValidInput) {
+            System.out.print("Enter buffer size (1-10): ");
+            int buffer = sc.nextInt();
+            System.out.print("Enter number of pumps: ");
+            int pumps = sc.nextInt();
+            System.out.print("Enter number of cars: ");
+            int cars = sc.nextInt();
+            if (buffer < 1 || pumps < 1 || cars < 1) {
+                System.out.println("Invalid input inputs must be >= 1!");
+                continue;
+            }
+            else {
+                isNotValidInput = false;
+                new ServiceStation(buffer, pumps, cars).startSimulation();
+            }
 
-        new ServiceStation(buffer, pumps, cars).startSimulation();
+            sc.close();
+
+
+        }
+
     }
 }
