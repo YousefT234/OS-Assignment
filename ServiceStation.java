@@ -1,12 +1,4 @@
-//GL guys
-/*output should show when a car:
 
-• Arrives
-• Enters the queue
-• Is taken by a Pump
-• Starts service (Acquiring the Pumps)
-• Finishes service (Releasing the Pumps)
- */
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
