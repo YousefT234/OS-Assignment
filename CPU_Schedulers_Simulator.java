@@ -26,17 +26,49 @@ class Process {
         this.lastExecutionTime = 0;
     }
 
-    public String getName() { return name; }
-    public int getArrivalTime() { return arrivalTime; }
-    public int getInitialBurstTime() { return initialBurstTime; }
-    public int getBurstTime() { return burstTime; }
-    public int getPriority() { return priority; }
-    public int getQuantum() { return quantum; }
-    public int getWaitingTime() { return waitingTime; }
-    public int getTurnaroundTime() { return turnaroundTime; }
-    public int getCompletionTime() { return completionTime; }
-    public int getStartTime() { return startTime; }
-    public int getLastExecutionTime() { return lastExecutionTime; }
+    public String getName() {
+        return name;
+    }
+
+    public int getArrivalTime() {
+        return arrivalTime;
+    }
+
+    public int getInitialBurstTime() {
+        return initialBurstTime;
+    }
+
+    public int getBurstTime() {
+        return burstTime;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public int getQuantum() {
+        return quantum;
+    }
+
+    public int getWaitingTime() {
+        return waitingTime;
+    }
+
+    public int getTurnaroundTime() {
+        return turnaroundTime;
+    }
+
+    public int getCompletionTime() {
+        return completionTime;
+    }
+
+    public int getStartTime() {
+        return startTime;
+    }
+
+    public int getLastExecutionTime() {
+        return lastExecutionTime;
+    }
 
     public void execute(int duration) {
         if (startTime == -1) {
@@ -83,6 +115,7 @@ class Process {
 abstract class AbstractScheduler {
 
     protected List<Process> initialProcesses;
+
     public abstract void schedule();
 
     protected final int contextSwitchTime;
@@ -359,37 +392,25 @@ class PreemptivePriorityScheduler extends AbstractScheduler {
     }
 }
 
-
-
-
-
 public class CPU_Schedulers_Simulator {
 
     public static void main(String[] args) {
-        // System.out.println("... CPU Schedulers Simulator ...");
-        // Scanner sc = new Scanner(System.in);
-        // int numProcesses = sc.nextInt();
-        // int rrQuantum = sc.nextInt(); // 
-        // int contextSwitchTime = sc.nextInt();
-        // List<Process> processes = new ArrayList<>();
-        // for (int i = 0; i < numProcesses; i++) {
-        //     String name = sc.next();
-        //     int arrival = sc.nextInt();
-        //     int burst = sc.nextInt();
-        //     int priority = sc.nextInt();
-        //     int quantum = sc.nextInt();
-        //     processes.add(new Process(name, arrival, burst, priority, quantum));
-        // }
-        // PreemptivePriorityScheduler scheduler = new PreemptivePriorityScheduler(processes, contextSwitchTime);
-        // scheduler.schedule();
-        // sc.close();
+        System.out.println("... CPU Schedulers Simulator ...");
+        Scanner sc = new Scanner(System.in);
+        int numProcesses = sc.nextInt();
+        int rrQuantum = sc.nextInt(); // 
+        int contextSwitchTime = sc.nextInt();
         List<Process> processes = new ArrayList<>();
-        processes.add(new Process("P1", 0, 8, 3, 0));
-        processes.add(new Process("P2", 1, 4, 1, 0));
-        processes.add(new Process("P3", 2, 2, 4, 0));
-        processes.add(new Process("P4", 3, 1, 2, 0));
-        processes.add(new Process("P5", 4, 3, 5, 0));
-        SJFScheduler sjfScheduler = new SJFScheduler(processes, 1);
-        sjfScheduler.schedule();
+        for (int i = 0; i < numProcesses; i++) {
+            String name = sc.next();
+            int arrival = sc.nextInt();
+            int burst = sc.nextInt();
+            int priority = sc.nextInt();
+            int quantum = sc.nextInt();
+            processes.add(new Process(name, arrival, burst, priority, quantum));
+        }
+        PreemptivePriorityScheduler scheduler = new PreemptivePriorityScheduler(processes, contextSwitchTime);
+        scheduler.schedule();
+        sc.close();
     }
 }
