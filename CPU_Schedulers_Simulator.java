@@ -25,17 +25,49 @@ class Process {
         this.lastExecutionTime = 0;
     }
 
-    public String getName() { return name; }
-    public int getArrivalTime() { return arrivalTime; }
-    public int getInitialBurstTime() { return initialBurstTime; }
-    public int getBurstTime() { return burstTime; }
-    public int getPriority() { return priority; }
-    public int getQuantum() { return quantum; }
-    public int getWaitingTime() { return waitingTime; }
-    public int getTurnaroundTime() { return turnaroundTime; }
-    public int getCompletionTime() { return completionTime; }
-    public int getStartTime() { return startTime; }
-    public int getLastExecutionTime() { return lastExecutionTime; }
+    public String getName() {
+        return name;
+    }
+
+    public int getArrivalTime() {
+        return arrivalTime;
+    }
+
+    public int getInitialBurstTime() {
+        return initialBurstTime;
+    }
+
+    public int getBurstTime() {
+        return burstTime;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public int getQuantum() {
+        return quantum;
+    }
+
+    public int getWaitingTime() {
+        return waitingTime;
+    }
+
+    public int getTurnaroundTime() {
+        return turnaroundTime;
+    }
+
+    public int getCompletionTime() {
+        return completionTime;
+    }
+
+    public int getStartTime() {
+        return startTime;
+    }
+
+    public int getLastExecutionTime() {
+        return lastExecutionTime;
+    }
 
     public void execute(int duration) {
         if (startTime == -1) {
@@ -82,6 +114,7 @@ class Process {
 abstract class AbstractScheduler {
 
     protected List<Process> initialProcesses;
+
     public abstract void schedule();
 
     protected final int contextSwitchTime;
@@ -287,6 +320,84 @@ class PreemptivePriorityScheduler extends AbstractScheduler {
             ready.remove(best);
         }
         return best;
+    }
+}
+
+
+class AGScheduler extends AbstractScheduler {
+    public AGScheduler(List<Process> processes, int csTime) {
+        super(processes, csTime);
+    }
+
+    @Override
+    public void schedule() {
+        List<Process> processes = initialProcesses;
+        processes.sort(Comparator.comparingInt(Process::getArrivalTime));
+
+        Queue<Process> readyQueue = new LinkedList<>();
+
+        int currentTime = 0;
+        int nextProcessIndex = 0;
+        int phase = 0;
+        Process currentProcess = null;
+        while (true) {
+            // Add arrived processes
+            while (nextProcessIndex < processes.size() && processes.get(nextProcessIndex).getArrivalTime() <= currentTime) {
+                Process p = processes.get(nextProcessIndex++);
+                readyQueue.add(p);
+            }
+            if (readyQueue.isEmpty() && currentProcess == null) {
+                if(nextProcessIndex == processes.size())
+                    break;
+                currentTime = processes.get(nextProcessIndex).getArrivalTime();
+                continue;
+            }
+
+            if (currentProcess == null) {
+                currentProcess = readyQueue.poll();
+                phase = 0;
+            }
+            if(currentProcess.getQuantum() == 0) {
+                currentProcess.setQuantum(2);
+                readyQueue.add(currentProcess);
+                currentProcess = null;
+                continue;
+            }
+            int time = (currentProcess.getQuantum() + 3) / 4;
+            time = Math.min(time, currentProcess.getBurstTime());
+            currentProcess.execute(time);
+            currentTime += time;
+            if (currentProcess.getBurstTime() > 0) {
+                if (phase == 0) {
+                    //go to second phase (Priority)
+                    Process nextProcess = Collections.min(readyQueue, Comparator.comparingInt(Process::getPriority));
+                    if (nextProcess != currentProcess) {
+                        int rem = currentProcess.getQuantum() - time;
+                        currentProcess.setQuantum(currentProcess.getQuantum() + (rem + 1) / 2);
+                        readyQueue.add(currentProcess);
+                        currentProcess = nextProcess;
+                        currentTime = performContextSwitch(currentTime);
+                    }
+                    phase = 1;
+                } else {
+                    // go to third phase (Shortest remaining time)
+                    Process nextProcess = Collections.min(readyQueue, Comparator.comparingInt(Process::getBurstTime));
+                    if (nextProcess != currentProcess) {
+                        int rem = currentProcess.getQuantum() - time;
+                        currentProcess.setQuantum(currentProcess.getQuantum() + rem);
+                        readyQueue.add(currentProcess);
+                        currentProcess = nextProcess;
+                        currentTime = performContextSwitch(currentTime);
+                    }
+                    phase = 0;
+                }
+            } else {
+                currentProcess.setCompletionTime(currentTime);
+                currentProcess.setQuantum(0); // scenario iv
+                currentProcess = null;
+                phase = 0;
+            }
+        }
     }
 }
 
