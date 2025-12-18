@@ -26,8 +26,6 @@ class Parser {
     public boolean parse(String input) {
         input = input.trim();
         if (input.isEmpty()) return false;
-
-        // Handle redirection tokens (simple: only if not inside quotes would be ideal)
         if (input.contains(">>")) {
             String[] temp = input.split(">>", 2);
             input = temp[0].trim();
@@ -51,7 +49,7 @@ class Parser {
                 char next = input.charAt(i + 1);
                 if (next == '"' || next == '\\') {
                     cur.append(next);
-                    i++; // skip next
+                    i++; 
                     continue;
                 }
                 cur.append(c);

@@ -1,5 +1,6 @@
 import java.util.*;
 
+
 class Process {
     private final String name;
     private final int arrivalTime;
@@ -133,6 +134,74 @@ abstract class AbstractScheduler {
         return totalTurnaroundTime / processes.size();
     }
 }
+
+
+ class SJFScheduler extends AbstractScheduler {
+
+    public SJFScheduler(List<Process> processes, int contextSwitchTime) {
+        super(processes, contextSwitchTime);
+    }
+
+    @Override
+    public void schedule() {
+        int currentTime = 0;
+        int completedProcessesCount = 0;
+        int totalProcesses = initialProcesses.size();
+        
+        PriorityQueue<Process> readyQueue = new PriorityQueue<>(
+            Comparator.comparingInt(Process::getBurstTime)
+                      .thenComparingInt(Process::getArrivalTime)
+        );
+        
+        List<Process> activeProcesses = new ArrayList<>(initialProcesses);
+        activeProcesses.sort(Comparator.comparingInt(Process::getArrivalTime));
+        
+        Process currentProcess = null;
+        Process lastProcess = null;
+        List<String> executionOrder = new ArrayList<>();
+
+        while (completedProcessesCount < totalProcesses) {
+            
+            while (!activeProcesses.isEmpty() && activeProcesses.get(0).getArrivalTime() <= currentTime) {
+                readyQueue.add(activeProcesses.remove(0));
+            }
+
+            if (!readyQueue.isEmpty()) {
+                Process bestCandidate = readyQueue.peek();
+
+                if (bestCandidate != lastProcess && lastProcess != null) {
+                   currentTime += contextSwitchTime;
+                }
+                
+                currentProcess = bestCandidate;
+                
+                if (currentProcess.getStartTime() == -1) {
+                    currentProcess.setLastExecutionTime(currentTime);
+                }
+
+                currentProcess.execute(1);
+                currentTime++;
+                
+                if(currentProcess != lastProcess) executionOrder.add(currentProcess.getName());
+
+                if (currentProcess.isCompleted()) {
+                    completedProcessesCount++;
+                    readyQueue.poll();
+                    
+                    calculateMetrics(currentProcess, currentTime);
+                }
+                
+                lastProcess = currentProcess;
+                
+            } else {
+                currentTime++;
+            }
+        }
+
+    }
+}
+
+
 
 class PreemptivePriorityScheduler extends AbstractScheduler {
 
@@ -290,25 +359,37 @@ class PreemptivePriorityScheduler extends AbstractScheduler {
     }
 }
 
+
+
+
+
 public class CPU_Schedulers_Simulator {
 
     public static void main(String[] args) {
-        System.out.println("... CPU Schedulers Simulator ...");
-        Scanner sc = new Scanner(System.in);
-        int numProcesses = sc.nextInt();
-        int rrQuantum = sc.nextInt(); // 
-        int contextSwitchTime = sc.nextInt();
+        // System.out.println("... CPU Schedulers Simulator ...");
+        // Scanner sc = new Scanner(System.in);
+        // int numProcesses = sc.nextInt();
+        // int rrQuantum = sc.nextInt(); // 
+        // int contextSwitchTime = sc.nextInt();
+        // List<Process> processes = new ArrayList<>();
+        // for (int i = 0; i < numProcesses; i++) {
+        //     String name = sc.next();
+        //     int arrival = sc.nextInt();
+        //     int burst = sc.nextInt();
+        //     int priority = sc.nextInt();
+        //     int quantum = sc.nextInt();
+        //     processes.add(new Process(name, arrival, burst, priority, quantum));
+        // }
+        // PreemptivePriorityScheduler scheduler = new PreemptivePriorityScheduler(processes, contextSwitchTime);
+        // scheduler.schedule();
+        // sc.close();
         List<Process> processes = new ArrayList<>();
-        for (int i = 0; i < numProcesses; i++) {
-            String name = sc.next();
-            int arrival = sc.nextInt();
-            int burst = sc.nextInt();
-            int priority = sc.nextInt();
-            int quantum = sc.nextInt();
-            processes.add(new Process(name, arrival, burst, priority, quantum));
-        }
-        PreemptivePriorityScheduler scheduler = new PreemptivePriorityScheduler(processes, contextSwitchTime);
-        scheduler.schedule();
-        sc.close();
+        processes.add(new Process("P1", 0, 8, 3, 0));
+        processes.add(new Process("P2", 1, 4, 1, 0));
+        processes.add(new Process("P3", 2, 2, 4, 0));
+        processes.add(new Process("P4", 3, 1, 2, 0));
+        processes.add(new Process("P5", 4, 3, 5, 0));
+        SJFScheduler sjfScheduler = new SJFScheduler(processes, 1);
+        sjfScheduler.schedule();
     }
 }
