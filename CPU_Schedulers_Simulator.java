@@ -177,7 +177,7 @@ abstract class AbstractScheduler {
 }
 
 
- class SJFScheduler extends AbstractScheduler {
+class SJFScheduler extends AbstractScheduler {
 
     public SJFScheduler(List<Process> processes, int contextSwitchTime) {
         super(processes, contextSwitchTime);
@@ -188,21 +188,21 @@ abstract class AbstractScheduler {
         int currentTime = 0;
         int completedProcessesCount = 0;
         int totalProcesses = initialProcesses.size();
-        
+
         PriorityQueue<Process> readyQueue = new PriorityQueue<>(
-            Comparator.comparingInt(Process::getBurstTime)
-                      .thenComparingInt(Process::getArrivalTime)
+                Comparator.comparingInt(Process::getBurstTime)
+                        .thenComparingInt(Process::getArrivalTime)
         );
-        
+
         List<Process> activeProcesses = new ArrayList<>(initialProcesses);
         activeProcesses.sort(Comparator.comparingInt(Process::getArrivalTime));
-        
+
         Process currentProcess = null;
         Process lastProcess = null;
         List<String> executionOrder = new ArrayList<>();
 
         while (completedProcessesCount < totalProcesses) {
-            
+
             while (!activeProcesses.isEmpty() && activeProcesses.get(0).getArrivalTime() <= currentTime) {
                 readyQueue.add(activeProcesses.remove(0));
             }
@@ -211,29 +211,29 @@ abstract class AbstractScheduler {
                 Process bestCandidate = readyQueue.peek();
 
                 if (bestCandidate != lastProcess && lastProcess != null) {
-                   currentTime += contextSwitchTime;
+                    currentTime += contextSwitchTime;
                 }
-                
+
                 currentProcess = bestCandidate;
-                
+
                 if (currentProcess.getStartTime() == -1) {
                     currentProcess.setLastExecutionTime(currentTime);
                 }
 
                 currentProcess.execute(1);
                 currentTime++;
-                
-                if(currentProcess != lastProcess) executionOrder.add(currentProcess.getName());
+
+                if (currentProcess != lastProcess) executionOrder.add(currentProcess.getName());
 
                 if (currentProcess.isCompleted()) {
                     completedProcessesCount++;
                     readyQueue.poll();
-                    
+
                     calculateMetrics(currentProcess, currentTime);
                 }
-                
+
                 lastProcess = currentProcess;
-                
+
             } else {
                 currentTime++;
             }
@@ -241,7 +241,6 @@ abstract class AbstractScheduler {
 
     }
 }
-
 
 
 class PreemptivePriorityScheduler extends AbstractScheduler {
@@ -434,11 +433,6 @@ class AGScheduler extends AbstractScheduler {
                 currentProcess = readyQueue.poll();
 
             }
-            if (currentProcess.getQuantum() == 0) {
-                currentProcess.setQuantum(2);  // scenario i
-                currentProcess = null;
-                continue;
-            }
 
             // Phase 1
             executionHistory.add(currentProcess.getName());
@@ -514,6 +508,9 @@ class AGScheduler extends AbstractScheduler {
                 currentProcess = null;
                 continue;
             }
+            currentProcess.setQuantum(currentProcess.getQuantum() + 2);  // scenario i
+            readyQueue.add(currentProcess);
+            currentProcess = null;
 
         }
 
@@ -537,14 +534,13 @@ class AGScheduler extends AbstractScheduler {
 }
 
 
-
 public class CPU_Schedulers_Simulator {
 
     public static void main(String[] args) {
         System.out.println("... CPU Schedulers Simulator ...");
         Scanner sc = new Scanner(System.in);
         int numProcesses = sc.nextInt();
-        int rrQuantum = sc.nextInt(); 
+        int rrQuantum = sc.nextInt();
         int contextSwitchTime = sc.nextInt();
         List<Process> processes = new ArrayList<>();
         for (int i = 0; i < numProcesses; i++) {
