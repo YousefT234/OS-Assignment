@@ -347,7 +347,7 @@ class AGScheduler extends AbstractScheduler {
                 readyQueue.add(p);
             }
             if (readyQueue.isEmpty() && currentProcess == null) {
-                if(nextProcessIndex == processes.size())
+                if (nextProcessIndex == processes.size())
                     break;
                 currentTime = processes.get(nextProcessIndex).getArrivalTime();
                 continue;
@@ -355,10 +355,13 @@ class AGScheduler extends AbstractScheduler {
 
             if (currentProcess == null) {
                 currentProcess = readyQueue.poll();
+                if (currentProcess.getStartTime() == -1)
+                    currentProcess.setStartTime(currentTime);
+
                 phase = 0;
             }
-            if(currentProcess.getQuantum() == 0) {
-                currentProcess.setQuantum(2);
+            if (currentProcess.getQuantum() == 0) {
+                currentProcess.setQuantum(2);  // scenario i
                 readyQueue.add(currentProcess);
                 currentProcess = null;
                 continue;
@@ -373,7 +376,7 @@ class AGScheduler extends AbstractScheduler {
                     Process nextProcess = Collections.min(readyQueue, Comparator.comparingInt(Process::getPriority));
                     if (nextProcess != currentProcess) {
                         int rem = currentProcess.getQuantum() - time;
-                        currentProcess.setQuantum(currentProcess.getQuantum() + (rem + 1) / 2);
+                        currentProcess.setQuantum(currentProcess.getQuantum() + (rem + 1) / 2);  // scenario ii
                         readyQueue.add(currentProcess);
                         currentProcess = nextProcess;
                         currentTime = performContextSwitch(currentTime);
@@ -384,7 +387,7 @@ class AGScheduler extends AbstractScheduler {
                     Process nextProcess = Collections.min(readyQueue, Comparator.comparingInt(Process::getBurstTime));
                     if (nextProcess != currentProcess) {
                         int rem = currentProcess.getQuantum() - time;
-                        currentProcess.setQuantum(currentProcess.getQuantum() + rem);
+                        currentProcess.setQuantum(currentProcess.getQuantum() + rem); // scenario iii
                         readyQueue.add(currentProcess);
                         currentProcess = nextProcess;
                         currentTime = performContextSwitch(currentTime);
@@ -392,12 +395,29 @@ class AGScheduler extends AbstractScheduler {
                     phase = 0;
                 }
             } else {
-                currentProcess.setCompletionTime(currentTime);
+                calculateMetrics(currentProcess, currentTime);
                 currentProcess.setQuantum(0); // scenario iv
                 currentProcess = null;
                 phase = 0;
             }
         }
+
+        // output
+        processes.sort(Comparator.comparingInt(Process::getStartTime));
+        System.out.println("AGScheduler");
+        System.out.println("Processes execution order:");
+        for (Process p : processes)
+            System.out.println(p.getName() + " started at " + p.getStartTime());
+
+        for (Process p : processes)
+            System.out.println(p.getName() + " waited for " + p.getWaitingTime());
+
+        for (Process p : processes)
+            System.out.println(p.getName() + " turned around for " + p.getTurnaroundTime());
+
+        System.out.println("Average Waiting Time: " + calculateAverageWaitingTime(processes));
+        System.out.println("Average Turnaround Time: " + calculateAverageTurnaroundTime(processes));
+
     }
 }
 
