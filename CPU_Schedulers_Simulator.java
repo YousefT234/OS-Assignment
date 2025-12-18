@@ -392,13 +392,112 @@ class PreemptivePriorityScheduler extends AbstractScheduler {
     }
 }
 
+class AGScheduler extends AbstractScheduler {
+    public AGScheduler(List<Process> processes, int csTime) {
+        super(processes, csTime);
+    }
+
+    @Override
+    public void schedule() {
+        List<Process> processes = initialProcesses;
+        processes.sort(Comparator.comparingInt(Process::getArrivalTime));
+
+        Queue<Process> readyQueue = new LinkedList<>();
+
+        int currentTime = 0;
+        int nextProcessIndex = 0;
+        int phase = 0;
+        Process currentProcess = null;
+        while (true) {
+            // Add arrived processes
+            while (nextProcessIndex < processes.size() && processes.get(nextProcessIndex).getArrivalTime() <= currentTime) {
+                Process p = processes.get(nextProcessIndex++);
+                readyQueue.add(p);
+            }
+            if (readyQueue.isEmpty() && currentProcess == null) {
+                if (nextProcessIndex == processes.size())
+                    break;
+                currentTime = processes.get(nextProcessIndex).getArrivalTime();
+                continue;
+            }
+
+            if (currentProcess == null) {
+                currentProcess = readyQueue.poll();
+                if (currentProcess.getStartTime() == -1)
+                    currentProcess.setStartTime(currentTime);
+
+                phase = 0;
+            }
+            if (currentProcess.getQuantum() == 0) {
+                currentProcess.setQuantum(2);  // scenario i
+                readyQueue.add(currentProcess);
+                currentProcess = null;
+                continue;
+            }
+            int time = (currentProcess.getQuantum() + 3) / 4;
+            time = Math.min(time, currentProcess.getBurstTime());
+            currentProcess.execute(time);
+            currentTime += time;
+            if (currentProcess.getBurstTime() > 0) {
+                if (phase == 0) {
+                    //go to second phase (Priority)
+                    Process nextProcess = Collections.min(readyQueue, Comparator.comparingInt(Process::getPriority));
+                    if (nextProcess != currentProcess) {
+                        int rem = currentProcess.getQuantum() - time;
+                        currentProcess.setQuantum(currentProcess.getQuantum() + (rem + 1) / 2);  // scenario ii
+                        readyQueue.add(currentProcess);
+                        currentProcess = nextProcess;
+                        currentTime = performContextSwitch(currentTime);
+                    }
+                    phase = 1;
+                } else {
+                    // go to third phase (Shortest remaining time)
+                    Process nextProcess = Collections.min(readyQueue, Comparator.comparingInt(Process::getBurstTime));
+                    if (nextProcess != currentProcess) {
+                        int rem = currentProcess.getQuantum() - time;
+                        currentProcess.setQuantum(currentProcess.getQuantum() + rem); // scenario iii
+                        readyQueue.add(currentProcess);
+                        currentProcess = nextProcess;
+                        currentTime = performContextSwitch(currentTime);
+                    }
+                    phase = 0;
+                }
+            } else {
+                calculateMetrics(currentProcess, currentTime);
+                currentProcess.setQuantum(0); // scenario iv
+                currentProcess = null;
+                phase = 0;
+            }
+        }
+
+        // output
+        processes.sort(Comparator.comparingInt(Process::getStartTime));
+        System.out.println("AGScheduler");
+        System.out.println("Processes execution order:");
+        for (Process p : processes)
+            System.out.println(p.getName() + " started at " + p.getStartTime());
+
+        for (Process p : processes)
+            System.out.println(p.getName() + " waited for " + p.getWaitingTime());
+
+        for (Process p : processes)
+            System.out.println(p.getName() + " turned around for " + p.getTurnaroundTime());
+
+        System.out.println("Average Waiting Time: " + calculateAverageWaitingTime(processes));
+        System.out.println("Average Turnaround Time: " + calculateAverageTurnaroundTime(processes));
+
+    }
+}
+
+
+
 public class CPU_Schedulers_Simulator {
 
     public static void main(String[] args) {
         System.out.println("... CPU Schedulers Simulator ...");
         Scanner sc = new Scanner(System.in);
         int numProcesses = sc.nextInt();
-        int rrQuantum = sc.nextInt(); // 
+        int rrQuantum = sc.nextInt(); 
         int contextSwitchTime = sc.nextInt();
         List<Process> processes = new ArrayList<>();
         for (int i = 0; i < numProcesses; i++) {
