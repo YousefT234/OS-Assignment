@@ -257,7 +257,7 @@ class SJFScheduler extends AbstractScheduler {
     }
 
     private void printResults() {
-        System.out.println("\n--- Shortest Job First Scheduling ---");
+        System.out.println("--- Shortest Job First Scheduling ---");
         System.out.println("Execution Order: " + executionOrder);
         System.out.println("Process\t\tWaiting Time\t\tTurnaround Time");
 
@@ -358,7 +358,7 @@ class RRScheduler extends AbstractScheduler {
     }
 
     private void printResults() {
-        System.out.println("\n--- Round Robin Scheduling ---");
+        System.out.println("--- Round Robin Scheduling ---");
         System.out.println("Execution Order: " + executionOrder);
         System.out.println("Process\t\tWaiting Time\t\tTurnaround Time");
 
@@ -482,7 +482,7 @@ class PreemptivePriorityScheduler extends AbstractScheduler {
     }
     
     private void printResults() {
-        System.out.println("\n--- Preemptive Priority Scheduling with Aging ---");
+        System.out.println("--- Preemptive Priority Scheduling with Aging ---");
         System.out.println("Execution Order: " + executionOrder);
         System.out.println("Process\t\tWaiting Time\t\tTurnaround Time");
 
@@ -687,17 +687,17 @@ class SchedulerTest {
         File[] Other_Schedulers = folder.listFiles((dir, name) -> name.endsWith(".json"));
         File[] AG = folder2.listFiles((dir, name) -> name.endsWith(".json"));
 
-        // for (File file : Other_Schedulers) {
-        //     JSONObject testCase = loadTestCaseFromFile(file);
-        //     System.out.println("Running test: " + file.getName());
-        //     runTestCase(testCase);
-        // }
-
-        for (File file : AG) {
+        for (File file : Other_Schedulers) {
             JSONObject testCase = loadTestCaseFromFile(file);
             System.out.println("Running test: " + file.getName());
-            runTestCase_AG(testCase);
+            runTestCase(testCase);
         }
+
+        // for (File file : AG) {
+        //     JSONObject testCase = loadTestCaseFromFile(file);
+        //     System.out.println("Running test: " + file.getName());
+        //     runTestCase_AG(testCase);
+        // }
     }
 
     private JSONObject loadTestCaseFromFile(File file) throws Exception {
@@ -804,7 +804,7 @@ class SchedulerTest {
                 0.001,
                 tempTestName + " avg turnaround time mismatch");
 
-            System.out.println(tempTestName + " passed.");    
+            System.out.println(tempTestName + " passed\n");    
         }
     }
     
