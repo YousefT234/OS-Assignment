@@ -176,6 +176,109 @@ abstract class AbstractScheduler {
     }
 }
 
+class RRScheduler extends AbstractScheduler {
+
+    private final int timeQuantum;
+
+    public RRScheduler(List<Process> processes, int contextSwitchTime, int timeQuantum) {
+        super(processes, contextSwitchTime);
+        this.timeQuantum = timeQuantum;
+    }
+
+    @Override
+    public void schedule() {
+
+        List<Process> processes = initialProcesses;
+        processes.sort(Comparator.comparingInt(Process::getArrivalTime));
+
+        Queue<Process> readyQueue = new LinkedList<>();
+        List<String> executionOrder = new ArrayList<>();
+
+        int currentTime = 0;
+        int index = 0;
+        Process currentProcess = null;
+        Process lastProcess = null;
+
+        while (true) {
+
+
+            while (index < processes.size() &&
+                    processes.get(index).getArrivalTime() <= currentTime) {
+                readyQueue.add(processes.get(index));
+                index++;
+            }
+
+            if (currentProcess == null) {
+                if (readyQueue.isEmpty()) {
+                    if (index == processes.size())
+                        break;
+                    currentTime = processes.get(index).getArrivalTime();
+                    continue;
+                }
+
+                currentProcess = readyQueue.poll();
+
+
+                if (lastProcess != null) {
+                    currentTime = performContextSwitch(currentTime);
+                }
+
+                if (currentProcess.getStartTime() == -1)
+                    currentProcess.setStartTime(currentTime);
+            }
+
+            executionOrder.add(currentProcess.getName());
+
+            int execTime = Math.min(timeQuantum, currentProcess.getBurstTime());
+            currentProcess.execute(execTime);
+            currentTime += execTime;
+
+
+            while (index < processes.size() &&
+                    processes.get(index).getArrivalTime() <= currentTime) {
+                readyQueue.add(processes.get(index));
+                index++;
+            }
+
+
+            if (currentProcess.isCompleted()) {
+                calculateMetrics(currentProcess, currentTime);
+                lastProcess = currentProcess;
+                currentProcess = null;
+            } else {
+                readyQueue.add(currentProcess);
+                lastProcess = currentProcess;
+                currentProcess = null;
+            }
+        }
+
+        printResults(executionOrder);
+    }
+
+    private void printResults(List<String> executionOrder) {
+        System.out.println("\n--- Round Robin Scheduling Results ---");
+        System.out.println("Execution Order: " + executionOrder);
+        System.out.println("Process\tWaiting Time\t\tTurnaround Time");
+
+        List<Process> sorted = new ArrayList<>(initialProcesses);
+        sorted.sort(Comparator.comparing(Process::getName));
+
+        for (Process p : sorted) {
+            System.out.println(p.getName() + "\t\t" +
+                    p.getWaitingTime() + "\t\t\t\t\t\t" +
+                    p.getTurnaroundTime());
+        }
+
+        System.out.println("Average Waiting Time: " +
+                String.format("%.2f", calculateAverageWaitingTime(initialProcesses)));
+
+        System.out.println("Average Turnaround Time: " +
+                String.format("%.2f", calculateAverageTurnaroundTime(initialProcesses)));
+
+    }
+}
+
+
 
 class SJFScheduler extends AbstractScheduler {
 
@@ -551,6 +654,8 @@ public class CPU_Schedulers_Simulator {
             int quantum = sc.nextInt();
             processes.add(new Process(name, arrival, burst, priority, quantum));
         }
+
+         new RRScheduler(processes, contextSwitchTime, rrQuantum).schedule();
 //        PreemptivePriorityScheduler scheduler = new PreemptivePriorityScheduler(processes, contextSwitchTime);
         AGScheduler scheduler = new AGScheduler(processes, contextSwitchTime);
         scheduler.schedule();
