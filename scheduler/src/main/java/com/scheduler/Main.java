@@ -656,10 +656,10 @@ class SchedulerTest {
         File[] files2 = folder2.listFiles((dir, name) -> name.endsWith(".json"));
         assertNotNull(files, "No test case files found in " + folder.getPath());
 
-        for (File file : files2) {
+        for (File file : files) {
             JSONObject testCase = loadTestCaseFromFile(file);
             System.out.println("Running test: " );
-            runTestCase2(testCase);
+            runTestCase(testCase);
         }
     }
 
