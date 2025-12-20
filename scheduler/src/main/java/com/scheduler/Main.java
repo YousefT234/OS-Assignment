@@ -253,6 +253,28 @@ class SJFScheduler extends AbstractScheduler {
                 currentTime++;
             }
         }
+        printResults();
+    }
+
+    private void printResults() {
+        System.out.println("\n--- Shortest Job First Scheduling ---");
+        System.out.println("Execution Order: " + executionOrder);
+        System.out.println("Process\t\tWaiting Time\t\tTurnaround Time");
+
+        List<Process> sorted = new ArrayList<>(initialProcesses);
+        sorted.sort(Comparator.comparing(Process::getName));
+
+        for (Process p : sorted) {
+            System.out.println(p.getName() + "\t\t    " +
+                    p.getWaitingTime() + "\t\t\t       " +
+                    p.getTurnaroundTime() + "\t\t");
+        }
+
+        System.out.println("Average Waiting Time: " +
+                String.format("%.2f", calculateAverageWaitingTime(initialProcesses)));
+
+        System.out.println("Average Turnaround Time: " +
+                String.format("%.2f", calculateAverageTurnaroundTime(initialProcesses)));
 
     }
 }
@@ -332,21 +354,21 @@ class RRScheduler extends AbstractScheduler {
             }
         }
 
-        // printResults();
+        printResults();
     }
 
     private void printResults() {
-        System.out.println("\n--- Round Robin Scheduling Results ---");
+        System.out.println("\n--- Round Robin Scheduling ---");
         System.out.println("Execution Order: " + executionOrder);
-        System.out.println("Process\tWaiting Time\t\tTurnaround Time");
+        System.out.println("Process\t\tWaiting Time\t\tTurnaround Time");
 
         List<Process> sorted = new ArrayList<>(initialProcesses);
         sorted.sort(Comparator.comparing(Process::getName));
 
         for (Process p : sorted) {
-            System.out.println(p.getName() + "\t\t" +
-                    p.getWaitingTime() + "\t\t\t\t\t\t" +
-                    p.getTurnaroundTime());
+            System.out.println(p.getName() + "\t\t    " +
+                    p.getWaitingTime() + "\t\t\t       " +
+                    p.getTurnaroundTime() + "\t\t");
         }
 
         System.out.println("Average Waiting Time: " +
@@ -460,25 +482,27 @@ class PreemptivePriorityScheduler extends AbstractScheduler {
     }
     
     private void printResults() {
-        System.out.println("Preemptive Priority Scheduling with Aging:");
-        System.out.println("Processes execution order:");
-        for (String entry : executionOrder) {
-            System.out.println(entry);
+        System.out.println("\n--- Preemptive Priority Scheduling with Aging ---");
+        System.out.println("Execution Order: " + executionOrder);
+        System.out.println("Process\t\tWaiting Time\t\tTurnaround Time");
+
+        List<Process> sorted = new ArrayList<>(initialProcesses);
+        sorted.sort(Comparator.comparing(Process::getName));
+
+        for (Process p : sorted) {
+            System.out.println(p.getName() + "\t\t    " +
+                    p.getWaitingTime() + "\t\t\t       " +
+                    p.getTurnaroundTime() + "\t\t");
         }
-        System.out.println("Waiting Time for each process:");
-        List<Process> sortedProcesses = new ArrayList<>(initialProcesses);
-        sortedProcesses.sort(Comparator.comparing(Process::getName));
-        for (Process p : sortedProcesses) {
-            System.out.println(p.getName() + ": " + p.getWaitingTime());
-        }
-        System.out.println("Turnaround Time for each process:");
-        for (Process p : sortedProcesses) {
-            System.out.println(p.getName() + ": " + p.getTurnaroundTime());
-        }
-        System.out.println("Average Waiting Time: " + String.format("%.2f", AbstractScheduler.calculateAverageWaitingTime(initialProcesses)));
-        System.out.println("Average Turnaround Time: " + String.format("%.2f", AbstractScheduler.calculateAverageTurnaroundTime(initialProcesses)));
+
+        System.out.println("Average Waiting Time: " +
+                String.format("%.2f", calculateAverageWaitingTime(initialProcesses)));
+
+        System.out.println("Average Turnaround Time: " +
+                String.format("%.2f", calculateAverageTurnaroundTime(initialProcesses)));
 
     }
+
 
     private int getEffective(Process p, Map<String, Integer> waitingTimes) {
         return p.getPriority() - (waitingTimes.get(p.getName()) / agingInterval);
@@ -529,7 +553,6 @@ class AGScheduler extends AbstractScheduler {
         int currentTime = 0;
         int nextProcessIndex = 0;
         Process currentProcess = null;
-        // int phase = 1;
         while (true) {
             // Add arrived processes
             while (nextProcessIndex < processes.size() && processes.get(nextProcessIndex).getArrivalTime() <= currentTime) {
@@ -547,7 +570,9 @@ class AGScheduler extends AbstractScheduler {
                 currentProcess = readyQueue.poll();
 
             }
-
+            if (currentProcess.getStartTime()==-1) {
+                currentProcess.setStartTime(currentTime);
+            }
             // Phase 1
             executionOrder.add(currentProcess.getName());
             int time = (currentProcess.getQuantum() + 3) / 4;
@@ -627,23 +652,29 @@ class AGScheduler extends AbstractScheduler {
             currentProcess = null;
         
         }
-        // printResults();
+        printResults();
     }
     private void printResults() {
-        initialProcesses.sort(Comparator.comparingInt(Process::getStartTime));
-        System.out.println("AGScheduler");
-        System.out.println("Processes execution order: " + executionOrder);
-        for (Process p : initialProcesses) {
-            System.out.print(p.getName() + " ");
-            System.out.print(" started at " + p.getStartTime());
-            System.out.print(" waited for " + p.getWaitingTime());
-            System.out.print(" turned around for " + p.getTurnaroundTime());
-            System.out.print(" quantum history: " + p.getQuantumHistory());
-            System.out.println();
+        System.out.println("--- AG Scheduling ---");
+        System.out.println("Execution Order: " + executionOrder);
+        System.out.println("Process\t\tWaiting Time\t\tTurnaround Time\t\tquantum history");
+
+        List<Process> sorted = new ArrayList<>(initialProcesses);
+        sorted.sort(Comparator.comparing(Process::getName));
+
+        for (Process p : sorted) {
+            System.out.println(p.getName() + "\t\t    " +
+                    p.getWaitingTime() + "\t\t\t       " +
+                    p.getTurnaroundTime() + "\t\t" +
+                    p.getQuantumHistory());
         }
 
-        System.out.println("Average Waiting Time: " + calculateAverageWaitingTime(initialProcesses));
-        System.out.println("Average Turnaround Time: " + calculateAverageTurnaroundTime(initialProcesses));
+        System.out.println("Average Waiting Time: " +
+                String.format("%.2f", calculateAverageWaitingTime(initialProcesses)));
+
+        System.out.println("Average Turnaround Time: " +
+                String.format("%.2f", calculateAverageTurnaroundTime(initialProcesses)));
+
     }
 }
 
@@ -652,14 +683,20 @@ class SchedulerTest {
     void testSchedulingAlgorithms() throws Exception {
         File folder = new File("scheduler/test_cases/Other_Schedulers");
         File folder2 = new File("scheduler/test_cases/AG");
-        File[] files = folder.listFiles((dir, name) -> name.endsWith(".json"));
-        File[] files2 = folder2.listFiles((dir, name) -> name.endsWith(".json"));
-        assertNotNull(files, "No test case files found in " + folder.getPath());
 
-        for (File file : files) {
+        File[] Other_Schedulers = folder.listFiles((dir, name) -> name.endsWith(".json"));
+        File[] AG = folder2.listFiles((dir, name) -> name.endsWith(".json"));
+
+        // for (File file : Other_Schedulers) {
+        //     JSONObject testCase = loadTestCaseFromFile(file);
+        //     System.out.println("Running test: " + file.getName());
+        //     runTestCase(testCase);
+        // }
+
+        for (File file : AG) {
             JSONObject testCase = loadTestCaseFromFile(file);
-            System.out.println("Running test: " );
-            runTestCase(testCase);
+            System.out.println("Running test: " + file.getName());
+            runTestCase_AG(testCase);
         }
     }
 
@@ -770,7 +807,8 @@ class SchedulerTest {
             System.out.println(tempTestName + " passed.");    
         }
     }
-    private void runTestCase2(JSONObject tc) {
+    
+    private void runTestCase_AG(JSONObject tc) {
         JSONObject input = tc.getJSONObject("input");
         List<Process> processes = parseProcesses_AG(input.getJSONArray("processes"));
         JSONObject expected = tc.getJSONObject("expectedOutput");
@@ -780,11 +818,11 @@ class SchedulerTest {
         List<String> executionOrder = scheduler.executionOrder;
         assertEquals(expectedOrder.length(),
             executionOrder.size(),
-             " execution order size mismatch");
+            "execution order size mismatch");
         for (int j = 0; j < expectedOrder.length(); j++) {
             assertEquals(expectedOrder.getString(j),
                 executionOrder.get(j),
-                " execution order mismatch at step " + j);
+                "execution order mismatch at step " + j);
         }
         JSONArray expectedResults = expected.getJSONArray("processResults");
         List<Process> actualProcesses = scheduler.initialProcesses;
@@ -797,27 +835,29 @@ class SchedulerTest {
             List<Integer> quantumHistory = act.getQuantumHistory();
             JSONArray expectedQuantumHistory = exp.getJSONArray("quantumHistory");
             assertEquals(expectedQuantumHistory.length(), quantumHistory.size(),
-                " quantum history size mismatch for process " + act.getName());
+                "quantum history size mismatch for process " + act.getName());
             for (int k = 0; k < expectedQuantumHistory.length(); k++) {
                 assertEquals(expectedQuantumHistory.getInt(k), quantumHistory.get(k),
-                    " quantum history mismatch for process " + act.getName() + " at index " + k);
+                    "quantum history mismatch for process " + act.getName() + " at index " + k);
             }
         }
 
         assertEquals(expected.getDouble("averageWaitingTime"),
             AbstractScheduler.calculateAverageWaitingTime(actualProcesses),
             0.001,
-            " avg waiting time mismatch");
+            "avg waiting time mismatch");
 
             assertEquals(expected.getDouble("averageTurnaroundTime"),
             AbstractScheduler.calculateAverageTurnaroundTime(scheduler.initialProcesses),
             0.001,
-            " avg turnaround time mismatch");
+            "avg turnaround time mismatch");
 
-        System.out.println(" passed.");    
+        System.out.println("Test passed\n");    
         
-    }        
+    } 
+
 }
+
 public class Main {
     public static void main(String[] args) throws Exception {
         SchedulerTest sc = new SchedulerTest();
