@@ -820,6 +820,7 @@ public class Main {
     public static void main(String[] args) throws Exception {
         SchedulerTest sc = new SchedulerTest();
         sc.testSchedulingAlgorithms();
+        System.out.println("All tests passed!");
     }
 }
 
