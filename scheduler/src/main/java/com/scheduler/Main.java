@@ -1,5 +1,4 @@
 package com.scheduler;
-
 import org.json.*;
 import org.junit.jupiter.api.Test;
 import java.io.InputStream;
@@ -7,10 +6,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.io.File;
 import java.io.FileInputStream;
-import org.json.JSONObject;
-import org.json.JSONArray;
-import org.junit.jupiter.api.Assertions;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class Process {
@@ -156,16 +151,16 @@ abstract class AbstractScheduler {
     protected List<Process> initialProcesses;
 
     public abstract void schedule();
-
+    
     public List<String> executionOrder = new ArrayList<>();
 
     protected final int contextSwitchTime;
 
+
     public AbstractScheduler(List<Process> processes, int csTime) {
         this.initialProcesses = deepCopyProcesses(processes);
         this.contextSwitchTime = csTime;
-    }
-
+    }  
     protected int performContextSwitch(int currentTime) {
         return currentTime + contextSwitchTime;
     }
@@ -178,7 +173,8 @@ abstract class AbstractScheduler {
                     p.getArrivalTime(),
                     p.getInitialBurstTime(),
                     p.getPriority(),
-                    p.getQuantum()));
+                    p.getQuantum()
+            ));
         }
         return copy;
     }
@@ -191,14 +187,13 @@ abstract class AbstractScheduler {
         p.setWaitingTime(waitingTime);
     }
 
-    public static double calculateAverageWaitingTime(List<Process> processes) {
+public static double calculateAverageWaitingTime(List<Process> processes) {
         double totalWaitingTime = 0;
         for (Process p : processes) {
             totalWaitingTime += p.getWaitingTime();
         }
-        if (processes.isEmpty())
-            return 0.0;
-
+        if (processes.isEmpty()) return 0.0;
+        
         double average = totalWaitingTime / processes.size();
         return Math.round(average * 100.0) / 100.0;
     }
@@ -208,8 +203,7 @@ abstract class AbstractScheduler {
         for (Process p : processes) {
             totalTurnaroundTime += p.getTurnaroundTime();
         }
-        if (processes.isEmpty())
-            return 0.0;
+        if (processes.isEmpty()) return 0.0;
 
         double average = totalTurnaroundTime / processes.size();
         return Math.round(average * 100.0) / 100.0;
@@ -230,7 +224,8 @@ class SJFScheduler extends AbstractScheduler {
 
         PriorityQueue<Process> readyQueue = new PriorityQueue<>(
                 Comparator.comparingInt(Process::getBurstTime)
-                        .thenComparingInt(Process::getArrivalTime));
+                        .thenComparingInt(Process::getArrivalTime)
+        );
 
         List<Process> activeProcesses = new ArrayList<>(initialProcesses);
         activeProcesses.sort(Comparator.comparingInt(Process::getArrivalTime));
@@ -260,8 +255,7 @@ class SJFScheduler extends AbstractScheduler {
                 currentProcess.execute(1);
                 currentTime++;
 
-                if (currentProcess != lastProcess)
-                    executionOrder.add(currentProcess.getName());
+                if (currentProcess != lastProcess) executionOrder.add(currentProcess.getName());
 
                 if (currentProcess.isCompleted()) {
                     completedProcessesCount++;
@@ -326,6 +320,7 @@ class RRScheduler extends AbstractScheduler {
 
         while (true) {
 
+
             while (index < processes.size() &&
                     processes.get(index).getArrivalTime() <= currentTime) {
                 readyQueue.add(processes.get(index));
@@ -342,6 +337,7 @@ class RRScheduler extends AbstractScheduler {
 
                 currentProcess = readyQueue.poll();
 
+
                 if (lastProcess != null) {
                     currentTime = performContextSwitch(currentTime);
                 }
@@ -356,11 +352,13 @@ class RRScheduler extends AbstractScheduler {
             currentProcess.execute(execTime);
             currentTime += execTime;
 
+
             while (index < processes.size() &&
                     processes.get(index).getArrivalTime() <= currentTime) {
                 readyQueue.add(processes.get(index));
                 index++;
             }
+
 
             if (currentProcess.isCompleted()) {
                 calculateMetrics(currentProcess, currentTime);
@@ -473,6 +471,27 @@ class PreemptivePriorityScheduler extends AbstractScheduler {
                 calculateMetrics(current, time);
             }
         }
+        printResults();
+    }
+    private void printResults() {
+        System.out.println("--- Preemptive Priority Scheduling ---");
+        System.out.println("Execution Order: " + executionOrder);
+        System.out.println("Process\t\tWaiting Time\t\tTurnaround Time");
+
+        List<Process> sorted = new ArrayList<>(initialProcesses);
+        sorted.sort(Comparator.comparing(Process::getName));
+
+        for (Process p : sorted) {
+            System.out.println(p.getName() + "\t\t    " +
+                    p.getWaitingTime() + "\t\t\t       " +
+                    p.getTurnaroundTime() + "\t\t");
+        }
+
+        System.out.println("Average Waiting Time: " +
+                String.format("%.2f", calculateAverageWaitingTime(initialProcesses)));
+
+        System.out.println("Average Turnaround Time: " +
+                String.format("%.2f", calculateAverageTurnaroundTime(initialProcesses)));
 
     }
 }
@@ -492,8 +511,7 @@ class AGScheduler extends AbstractScheduler {
         Process currentProcess = null;
         while (true) {
             // Add arrived processes
-            while (nextProcessIndex < processes.size()
-                    && processes.get(nextProcessIndex).getArrivalTime() <= currentTime) {
+            while (nextProcessIndex < processes.size() && processes.get(nextProcessIndex).getArrivalTime() <= currentTime) {
                 Process p = processes.get(nextProcessIndex++);
                 readyQueue.add(p);
             }
@@ -508,7 +526,7 @@ class AGScheduler extends AbstractScheduler {
                 currentProcess = readyQueue.poll();
 
             }
-            if (currentProcess.getStartTime() == -1) {
+            if (currentProcess.getStartTime()==-1) {
                 currentProcess.setStartTime(currentTime);
             }
             // Phase 1
@@ -525,20 +543,19 @@ class AGScheduler extends AbstractScheduler {
                 currentProcess = null;
                 continue;
             }
-            while (nextProcessIndex < processes.size()
-                    && processes.get(nextProcessIndex).getArrivalTime() <= currentTime) {
+            while (nextProcessIndex < processes.size() && processes.get(nextProcessIndex).getArrivalTime() <= currentTime) {
                 Process p = processes.get(nextProcessIndex++);
                 readyQueue.add(p);
             }
 
-            // go to second phase (Priority)
+            //go to second phase (Priority)
             Process nextProcess = null;
             if (!readyQueue.isEmpty())
                 nextProcess = Collections.min(readyQueue, Comparator.comparingInt(Process::getPriority));
             if (nextProcess == null || currentProcess.getPriority() <= nextProcess.getPriority())
                 nextProcess = currentProcess;
             if (nextProcess != currentProcess) {
-                currentProcess.setQuantum(currentProcess.getQuantum() + (rem + 1) / 2); // scenario ii
+                currentProcess.setQuantum(currentProcess.getQuantum() + (rem + 1) / 2);  // scenario ii
                 readyQueue.remove(nextProcess);
                 readyQueue.add(currentProcess);
                 currentProcess = nextProcess;
@@ -556,8 +573,7 @@ class AGScheduler extends AbstractScheduler {
                 currentProcess = null;
                 continue;
             }
-            while (nextProcessIndex < processes.size()
-                    && processes.get(nextProcessIndex).getArrivalTime() <= currentTime) {
+            while (nextProcessIndex < processes.size() && processes.get(nextProcessIndex).getArrivalTime() <= currentTime) {
                 Process p = processes.get(nextProcessIndex++);
                 readyQueue.add(p);
             }
@@ -587,14 +603,13 @@ class AGScheduler extends AbstractScheduler {
                 currentProcess = null;
                 continue;
             }
-            currentProcess.setQuantum(currentProcess.getQuantum() + 2); // scenario i
+            currentProcess.setQuantum(currentProcess.getQuantum() + 2);  // scenario i
             readyQueue.add(currentProcess);
             currentProcess = null;
-
+        
         }
         printResults();
     }
-
     private void printResults() {
         System.out.println("--- AG Scheduling ---");
         System.out.println("Execution Order: " + executionOrder);
@@ -622,8 +637,8 @@ class AGScheduler extends AbstractScheduler {
 class SchedulerTest {
     @Test
     void testSchedulingAlgorithms() throws Exception {
-        File folder = new File("test_cases/Other_Schedulers");
-        File folder2 = new File("test_cases/AG");
+        File folder = new File("scheduler/test_cases/Other_Schedulers");
+        File folder2 = new File("scheduler/test_cases/AG");
 
         File[] Other_Schedulers = folder.listFiles((dir, name) -> name.endsWith(".json"));
         File[] AG = folder2.listFiles((dir, name) -> name.endsWith(".json"));
@@ -634,11 +649,11 @@ class SchedulerTest {
             runTestCase(testCase);
         }
 
-        // for (File file : AG) {
-        // JSONObject testCase = loadTestCaseFromFile(file);
-        // System.out.println("Running test: " + file.getName());
-        // runTestCase_AG(testCase);
-        // }
+        for (File file : AG) {
+            JSONObject testCase = loadTestCaseFromFile(file);
+            System.out.println("Running test: " + file.getName());
+            runTestCase_AG(testCase);
+        }
     }
 
     private JSONObject loadTestCaseFromFile(File file) throws Exception {
@@ -661,7 +676,9 @@ class SchedulerTest {
                     p.getInt("burst"),
                     p.getInt("priority"),
                     0,
-                    i));
+                    i
+
+            ));
         }
         return list;
     }
@@ -676,8 +693,8 @@ class SchedulerTest {
                     p.getInt("arrival"),
                     p.getInt("burst"),
                     p.getInt("priority"),
-                    p.getInt("quantum"),
-                    i));
+                    p.getInt("quantum")
+            ));
         }
         return list;
     }
@@ -689,25 +706,25 @@ class SchedulerTest {
         int rrQuantum = input.getInt("rrQuantum");
         int agingInterval = input.getInt("agingInterval");
 
-        JSONArray processesArr = input.getJSONArray("processes");
+        List<Process> processes = parseProcesses(input.getJSONArray("processes"));
         JSONObject expected = tc.getJSONObject("expectedOutput");
-        for (int i = 0; i < 3; i++) {
+        for(int i = 0; i < 3; i++){
             AbstractScheduler scheduler = null;
             String algoName = "";
             String tempTestName = testName;
-            // parse fresh processes for each algorithm to avoid mutated state
-            List<Process> processes = parseProcesses(processesArr);
-            if (i == 0) {
+            if (i==0) {
                 algoName = "SJF";
                 scheduler = new SJFScheduler(processes, contextSwitch);
                 scheduler.schedule();
                 tempTestName += " - SJF";
-            } else if (i == 1) {
+            }
+            else if (i==1) {
                 algoName = "RR";
                 scheduler = new RRScheduler(processes, contextSwitch, rrQuantum);
                 scheduler.schedule();
                 tempTestName += " - RR";
-            } else if (i == 2) {
+            }
+            else if (i==2) {
                 algoName = "Priority";
                 scheduler = new PreemptivePriorityScheduler(processes, contextSwitch, agingInterval);
                 scheduler.schedule();
@@ -718,12 +735,12 @@ class SchedulerTest {
             JSONArray expectedOrder = expectedAlgoData.getJSONArray("executionOrder");
             List<String> executionOrder = scheduler.executionOrder;
             assertEquals(expectedOrder.length(),
-                    executionOrder.size(),
-                    tempTestName + " execution order size mismatch");
+                executionOrder.size(),
+                tempTestName + " execution order size mismatch");
             for (int j = 0; j < expectedOrder.length(); j++) {
                 assertEquals(expectedOrder.getString(j),
-                        executionOrder.get(j),
-                        tempTestName + " execution order mismatch at step " + j);
+                    executionOrder.get(j),
+                    tempTestName + " execution order mismatch at step " + j);
             }
             JSONArray expectedResults = expectedAlgoData.getJSONArray("processResults");
             List<Process> actualProcesses = scheduler.initialProcesses;
@@ -731,26 +748,24 @@ class SchedulerTest {
                 JSONObject exp = expectedResults.getJSONObject(j);
                 Process act = actualProcesses.get(j);
                 assertEquals(exp.getString("name"), act.getName());
-                assertEquals(exp.getDouble("waitingTime"), (double) act.getWaitingTime(), 1.1,
-                        tempTestName + " waiting time mismatch for process " + act.getName());
-                assertEquals(exp.getDouble("turnaroundTime"), (double) act.getTurnaroundTime(), 1.1,
-                        tempTestName + " turnaround time mismatch for process " + act.getName());
+                assertEquals(exp.getInt("waitingTime"), act.getWaitingTime());
+                assertEquals(exp.getInt("turnaroundTime"), act.getTurnaroundTime());
             }
 
             assertEquals(expectedAlgoData.getDouble("averageWaitingTime"),
-                    AbstractScheduler.calculateAverageWaitingTime(actualProcesses),
-                    1.1,
-                    tempTestName + " avg waiting time mismatch");
+                AbstractScheduler.calculateAverageWaitingTime(actualProcesses),
+                0.11,
+                tempTestName + " avg waiting time mismatch");
 
-            assertEquals(expectedAlgoData.getDouble("averageTurnaroundTime"),
-                    AbstractScheduler.calculateAverageTurnaroundTime(scheduler.initialProcesses),
-                    1.1,
-                    tempTestName + " avg turnaround time mismatch");
+             assertEquals(expectedAlgoData.getDouble("averageTurnaroundTime"),
+                AbstractScheduler.calculateAverageTurnaroundTime(scheduler.initialProcesses),
+                0.11,
+                tempTestName + " avg turnaround time mismatch");
 
-            System.out.println(tempTestName + " passed\n");
+            System.out.println(tempTestName + " passed\n");    
         }
     }
-
+    
     private void runTestCase_AG(JSONObject tc) {
         JSONObject input = tc.getJSONObject("input");
         List<Process> processes = parseProcesses_AG(input.getJSONArray("processes"));
@@ -760,12 +775,12 @@ class SchedulerTest {
         JSONArray expectedOrder = expected.getJSONArray("executionOrder");
         List<String> executionOrder = scheduler.executionOrder;
         assertEquals(expectedOrder.length(),
-                executionOrder.size(),
-                "execution order size mismatch");
+            executionOrder.size(),
+            "execution order size mismatch");
         for (int j = 0; j < expectedOrder.length(); j++) {
             assertEquals(expectedOrder.getString(j),
-                    executionOrder.get(j),
-                    "execution order mismatch at step " + j);
+                executionOrder.get(j),
+                "execution order mismatch at step " + j);
         }
         JSONArray expectedResults = expected.getJSONArray("processResults");
         List<Process> actualProcesses = scheduler.initialProcesses;
@@ -773,33 +788,31 @@ class SchedulerTest {
             JSONObject exp = expectedResults.getJSONObject(j);
             Process act = actualProcesses.get(j);
             assertEquals(exp.getString("name"), act.getName());
-            assertEquals(exp.getDouble("waitingTime"), (double) act.getWaitingTime(), 1.1,
-                    "waiting time mismatch for process " + act.getName());
-            assertEquals(exp.getDouble("turnaroundTime"), (double) act.getTurnaroundTime(), 1.1,
-                    "turnaround time mismatch for process " + act.getName());
+            assertEquals(exp.getInt("waitingTime"), act.getWaitingTime());
+            assertEquals(exp.getInt("turnaroundTime"), act.getTurnaroundTime());
             List<Integer> quantumHistory = act.getQuantumHistory();
             JSONArray expectedQuantumHistory = exp.getJSONArray("quantumHistory");
             assertEquals(expectedQuantumHistory.length(), quantumHistory.size(),
-                    "quantum history size mismatch for process " + act.getName());
+                "quantum history size mismatch for process " + act.getName());
             for (int k = 0; k < expectedQuantumHistory.length(); k++) {
                 assertEquals(expectedQuantumHistory.getInt(k), quantumHistory.get(k),
-                        "quantum history mismatch for process " + act.getName() + " at index " + k);
+                    "quantum history mismatch for process " + act.getName() + " at index " + k);
             }
         }
 
         assertEquals(expected.getDouble("averageWaitingTime"),
-                AbstractScheduler.calculateAverageWaitingTime(actualProcesses),
-                1.1,
-                "avg waiting time mismatch");
+            AbstractScheduler.calculateAverageWaitingTime(actualProcesses),
+            0.001,
+            "avg waiting time mismatch");
 
-        assertEquals(expected.getDouble("averageTurnaroundTime"),
-                AbstractScheduler.calculateAverageTurnaroundTime(scheduler.initialProcesses),
-                1.1,
-                "avg turnaround time mismatch");
+            assertEquals(expected.getDouble("averageTurnaroundTime"),
+            AbstractScheduler.calculateAverageTurnaroundTime(scheduler.initialProcesses),
+            0.001,
+            "avg turnaround time mismatch");
 
-        System.out.println("Test passed\n");
-
-    }
+        System.out.println("Test passed\n");    
+        
+    } 
 
 }
 
@@ -809,3 +822,5 @@ public class Main {
         sc.testSchedulingAlgorithms();
     }
 }
+
+
